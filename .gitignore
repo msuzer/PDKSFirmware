@@ -1,0 +1,73 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+*.bin
+
+# platform ini ignore
+.pio
+.vscode
+
+# ==============================
+# ESP-IDF / Build artifacts
+# ==============================
+build/
+sdkconfig
+sdkconfig.old
+sdkconfig.*.old
+
+# ==============================
+# Python
+# ==============================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+
+# ==============================
+# OS / Editor junk
+# ==============================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ==============================
+# Logs / binaries
+# ==============================
+*.log
+*.bin
+*.elf
+*.map
