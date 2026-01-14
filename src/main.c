@@ -14,8 +14,7 @@
 
 #include "pins.h"
 
-static void rtc_set_once_for_test(void)
-{
+static void rtc_set_once_for_test(void) {
     struct tm t = {0};
     // Example: set to 2026-01-14 02:10:00 (local)
     t.tm_year = 2026 - 1900;
@@ -39,8 +38,7 @@ static void show_date_time() {
     }
 }
 
-void spi_cs_init(void)
-{
+void spi_cs_init(void) {
     gpio_config_t io_conf = {
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
@@ -61,8 +59,7 @@ void spi_cs_init(void)
     // Add more SPI devices here (SD, etc.)
 }
 
-void app_main(void)
-{
+void app_main(void) {
     spi_cs_init();     // 🔴 FIRST
     logger_init();
     prefs_init();
