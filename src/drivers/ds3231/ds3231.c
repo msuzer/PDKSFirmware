@@ -1,6 +1,6 @@
 #include "ds3231.h"
-#include "i2c_bus.h"
-#include "logger.h"
+#include "services/i2c/i2c_bus.h"
+#include "services/logger/logger.h"
 
 #include "driver/i2c.h"
 #include "freertos/FreeRTOS.h"

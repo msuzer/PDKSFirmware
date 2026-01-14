@@ -1,6 +1,6 @@
 #include "i2c_bus.h"
 #include "pins.h"
-#include "logger.h"
+#include "services/logger/logger.h"
 
 static i2c_port_t i2c_port = I2C_NUM_0;
 static bool i2c_inited = false;

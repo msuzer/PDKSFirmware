@@ -14,7 +14,7 @@ bootloader = os.path.join(build_dir, "bootloader.bin")
 partitions = os.path.join(build_dir, "partitions.bin")
 firmware = os.path.join(build_dir, "firmware.bin")
 
-# Path to the header file containing FIRMWARE_VERSION and DEVICE_VERSION
+# Path to the header file containing FIRMWARE_VERSION and BOARD_VERSION
 system_context_header = os.path.join(project_dir, "src/core", "version.h")
 
 # Use esptool.py from PlatformIO's tool directory
@@ -51,17 +51,30 @@ def get_firmware_version():
         print("Could not read FIRMWARE_VERSION from header:", e)
     return "unknown"
 
-def get_device_version():
+def get_board_version():
     try:
         with open(system_context_header, 'r') as f:
             content = f.read()
-            match = re.search(r'#define\s+DEVICE_VERSION\s+"([^"]+)"', content)
+            match = re.search(r'#define\s+BOARD_VERSION\s+"([^"]+)"', content)
             if match:
-                device_version = match.group(1)
-                print(f"Detected DEVICE_VERSION = {device_version}")
-                return device_version
+                board_version = match.group(1)
+                print(f"Detected BOARD_VERSION = {board_version}")
+                return board_version
     except Exception as e:
-        print("Could not read DEVICE_VERSION from header:", e)
+        print("Could not read BOARD_VERSION from header:", e)
+    return "unknown"
+
+def get_soc_version():
+    try:
+        with open(system_context_header, 'r') as f:
+            content = f.read()
+            match = re.search(r'#define\s+SOC_VERSION\s+"([^"]+)"', content)
+            if match:
+                soc_version = match.group(1)
+                print(f"Detected SOC_VERSION = {soc_version}")
+                return soc_version
+    except Exception as e:
+        print("Could not read SOC_VERSION from header:", e)
     return "unknown"
 
 def clean_previous_bins(app_name):
@@ -76,9 +89,10 @@ def clean_previous_bins(app_name):
 
 def merge_bin_files(source, target, env):
     version = get_firmware_version()
-    device_version = get_device_version()
+    board_version = get_board_version()
+    soc_version = get_soc_version()
     app_name = get_firmware_name()
-    board_label = f"{app_name}_v{version}_{device_version}"
+    board_label = f"{app_name}_v{version}_{board_version}_{soc_version}"
 
     # Format: DD_MM_YYYY
     date_str = datetime.now().strftime("%d_%m_%Y")
@@ -93,7 +107,7 @@ def merge_bin_files(source, target, env):
     cmd = [
         sys.executable,
         esptool_path,
-        "--chip", "esp32s3",
+        "--chip", soc_version,
         "merge_bin",
         "-o", final_output,
         "--flash_mode", "keep",

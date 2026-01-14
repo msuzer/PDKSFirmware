@@ -1,7 +1,7 @@
 #include "datetime.h"
-#include "i2c_bus.h"
-#include "logger.h"
-#include "ds3231.h"
+#include "services/i2c/i2c_bus.h"
+#include "services/logger/logger.h"
+#include "drivers/ds3231/ds3231.h"
 #include "freertos/semphr.h"
 
 #define DS3231_ADDR 0x68

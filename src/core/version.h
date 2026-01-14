@@ -24,7 +24,8 @@ Flash ID: 182085
 #define FIRMWARE_NAME       "PDKS Firmware"
 #define FIRMWARE_AUTHOR     "Mehmet H Suzer"
 #define FIRMWARE_VERSION    "1.0.0"
-#define DEVICE_VERSION      "HW-Rev-A"
+#define BOARD_VERSION       "HW-Rev-A"
+#define SOC_VERSION         "esp32s3"
 
 #define BUILD_DATE          __DATE__
 #define BUILD_TIME          __TIME__
