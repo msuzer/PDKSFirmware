@@ -28,15 +28,15 @@ CONFIG_ESP_CONSOLE_UART_NUM=0
 # ==============================
 # PSRAM (ESP32-S3 embedded)
 # ==============================
-CONFIG_SPIRAM=n
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+CONFIG_SPIRAM_MEMTEST=y
 
 # ==============================
 # FLASH
 # ==============================
-CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
-
-# ==============================
-# Camera support (future)
-# ==============================
-CONFIG_ESP32S3_DATA_CACHE_64KB=y
-CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_HEADER_FLASHSIZE_UPDATE=y
+CONFIG_ESPTOOLPY_FLASHSIZE_FORCE=y
