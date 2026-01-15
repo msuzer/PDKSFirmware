@@ -5,10 +5,7 @@
 #include "freertos/queue.h"
 
 /* ===== Event type ===== */
-typedef struct {
-    uint8_t uid[10];
-    uint8_t uid_len;
-} rfid_event_t;
+#include "include/rfid_types.h"
 
 /* ===== API ===== */
 bool        rfid_service_start(int mfrc_cs_pin);

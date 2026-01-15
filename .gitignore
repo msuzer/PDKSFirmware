@@ -35,6 +35,7 @@
 # platform ini ignore
 .pio
 .vscode
+.ccache
 
 # ==============================
 # ESP-IDF / Build artifacts

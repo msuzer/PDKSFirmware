@@ -8,5 +8,5 @@ typedef enum {
     LED_BLINK_FAST
 } led_mode_t;
 
-void led_init(void);
+void led_init(int led_pin);
 void led_set_mode(led_mode_t mode);

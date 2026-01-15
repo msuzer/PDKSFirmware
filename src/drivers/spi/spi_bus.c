@@ -1,6 +1,5 @@
 #include "spi_bus.h"
 #include "driver/gpio.h"
-#include "pins.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
@@ -9,14 +8,14 @@
 static SemaphoreHandle_t spi_mutex;
 static bool bus_ready = false;
 
-esp_err_t spi_bus_init(void) {
+esp_err_t spi_bus_init(int miso_pin, int mosi_pin, int sck_pin) {
     if (bus_ready)
         return ESP_OK;
 
     spi_bus_config_t buscfg = {
-        .miso_io_num = SPI_MISO_PIN,
-        .mosi_io_num = SPI_MOSI_PIN,
-        .sclk_io_num = SPI_SCK_PIN,
+        .miso_io_num = miso_pin,
+        .mosi_io_num = mosi_pin,
+        .sclk_io_num = sck_pin,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .max_transfer_sz = 256,

@@ -2,7 +2,7 @@
 #include "driver/i2c_master.h"
 
 // Initialize the I2C master bus (new API)
-esp_err_t i2c_bus_init(void);
+esp_err_t i2c_bus_init(int sda_pin, int scl_pin);
 
 // New API helpers
 i2c_master_bus_handle_t i2c_bus_get_bus(void);

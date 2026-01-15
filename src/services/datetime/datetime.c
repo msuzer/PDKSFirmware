@@ -1,5 +1,4 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
+#include "include/project_common.h"
 
 #include "datetime.h"
 #include "services/i2c/i2c_bus.h"
@@ -17,7 +16,7 @@ bool datetime_init(void)
     rtc_mutex = xSemaphoreCreateMutex();
     if (!rtc_mutex) return false;
 
-    i2c_bus_init();
+    // I2C bus must be initialized in main with pin args
 
     if (!ds3231_init()) {
         ESP_LOGE(TAG, "RTC init failed");

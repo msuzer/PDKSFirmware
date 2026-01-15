@@ -1,4 +1,5 @@
 #include <driver/gpio.h>
+#include <stdint.h>
 
 #include "drivers/spi/spi_bus.h"
 
@@ -11,7 +12,6 @@
 #include "services/relay/relay.h"
 #include "services/rfid/rfid_service.h"
 
-#include "tasks/led_blink_task.h"
 #include "tasks/access_control_service.h"
 #include <time.h>
 
@@ -68,11 +68,11 @@ void spi_cs_init(void) {
 void app_main(void) {
     spi_cs_init();     // 🔴 FIRST
     prefs_init();
-    i2c_bus_init();
-    spi_bus_init();
-    led_init();
-    buzzer_init();
-    relay_init();
+    i2c_bus_init(I2C_SDA_PIN, I2C_SCL_PIN);
+    spi_bus_init(SPI_MISO_PIN, SPI_MOSI_PIN, SPI_SCK_PIN);
+    led_init(USER_LED_PIN);
+    buzzer_init(USER_BUZZER_PIN);
+    relay_init(USER_OPEN_DOOR_PIN);
     datetime_init();
     oled_init();
 
@@ -91,7 +91,6 @@ void app_main(void) {
 
     show_date_time();
 
-    xTaskCreate(led_blink_task, "led_blink", 2048, NULL, 5, NULL);
     xTaskCreate(access_control_task, "access_ctrl", 4096, NULL, 6, NULL);
 
     while (1) {

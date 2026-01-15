@@ -1,5 +1,4 @@
 #include "i2c_bus.h"
-#include "pins.h"
 
 #include <esp_log.h>
 #define TAG "I2C_BUS"
@@ -7,7 +6,7 @@
 static bool i2c_inited = false;
 static i2c_master_bus_handle_t bus_handle = NULL;
 
-esp_err_t i2c_bus_init(void) {
+esp_err_t i2c_bus_init(int sda_pin, int scl_pin) {
     if (i2c_inited) {
         return ESP_OK;
     }
@@ -15,8 +14,8 @@ esp_err_t i2c_bus_init(void) {
     i2c_master_bus_config_t cfg = {
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .i2c_port = I2C_NUM_0,
-        .sda_io_num = I2C_SDA_PIN,
-        .scl_io_num = I2C_SCL_PIN,
+        .sda_io_num = sda_pin,
+        .scl_io_num = scl_pin,
         .flags = { .enable_internal_pullup = true },
     };
 

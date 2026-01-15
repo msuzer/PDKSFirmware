@@ -2,9 +2,7 @@
 #include "drivers/mfrc522/mfrc522.h"
 #include "drivers/spi/spi_bus.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
+#include "include/project_common.h"
 #include <string.h>
 
 #include <esp_log.h>
@@ -18,47 +16,26 @@ static mfrc522_t mfrc;
 static QueueHandle_t rfid_queue;
 
 static void rfid_task(void *arg) {
-    bool card_was_present = false;
-    bool awaiting_absent = false;
-
     while (1) {
-        bool card_present = mfrc522_is_card_present(&mfrc);
-
-        if (card_present != card_was_present) {
-            ESP_LOGI(TAG, "card_present=%d", card_present);
-        }
-
-        if (card_present && !card_was_present && !awaiting_absent) {
-
+        if (mfrc522_is_card_present(&mfrc)) {
             uint8_t uid[10];
             uint8_t uid_len = 0;
 
             if (mfrc522_read_uid(&mfrc, uid, &uid_len)) {
-
-                rfid_event_t evt = {0};
+                rfid_event_t evt = (rfid_event_t){0};
                 evt.uid_len = uid_len;
                 memcpy(evt.uid, uid, uid_len);
 
-                if (xQueueSend(rfid_queue, &evt, 0) == pdTRUE) {
-                    ESP_LOGI(TAG, "UID event queued");
-                } else {
+                if (xQueueSend(rfid_queue, &evt, 0) != pdTRUE) {
                     ESP_LOGW(TAG, "RFID queue full");
                 }
-
-                mfrc522_halt(&mfrc);
-                mfrc522_stop_crypto(&mfrc);
-
-                // Only allow next event after the card is removed
-                awaiting_absent = true;
             }
+
+            // Put card in HALT, stop crypto; this makes REQA ignore the card
+            mfrc522_halt(&mfrc);
+            mfrc522_stop_crypto(&mfrc);
         }
 
-        if (!card_present) {
-            card_was_present = false;
-            awaiting_absent = false;
-        } else {
-            card_was_present = true;
-        }
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
@@ -68,9 +45,7 @@ bool rfid_service_start(int mfrc_cs_pin) {
     if (started)
         return true;
 
-    /* Ensure SPI bus is up */
-    if (spi_bus_init() != ESP_OK)
-        return false;
+    /* SPI bus must be initialized in main with pin args */
 
     /* Init MFRC522 device */
     if (!mfrc522_init(&mfrc, mfrc_cs_pin))

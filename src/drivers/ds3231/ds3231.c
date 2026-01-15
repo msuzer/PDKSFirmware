@@ -32,8 +32,7 @@ static esp_err_t ds3231_write(uint8_t reg, const uint8_t *data, size_t len) {
 }
 
 bool ds3231_init(void) {
-    // Ensure bus is initialized and add device
-    i2c_bus_init();
+    // Bus must be initialized in main with pin args
     ds3231_dev = i2c_bus_add_device(DS3231_ADDR, 400000);
 
     uint8_t dummy;

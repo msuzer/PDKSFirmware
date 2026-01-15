@@ -3,7 +3,6 @@
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "pins.h"
 
 #include <esp_log.h>
 #define TAG "MFRC522"
@@ -155,12 +154,35 @@ void mfrc522_halt(mfrc522_t *dev) {
     if (!dev)
         return;
 
-    uint8_t cmd[2] = {PICC_CMD_HALT, 0x00};
-    uint8_t rx_len = 0;
+    // Build HALT + CRC_A
+    uint8_t cmd[4] = { PICC_CMD_HALT, 0x00, 0x00, 0x00 };
+    uint8_t crc[2];
+    if (mfrc522_calc_crc(dev, cmd, 2, crc)) {
+        cmd[2] = crc[0];
+        cmd[3] = crc[1];
+    }
 
-    mfrc522_transceive(dev, cmd, 2, NULL, &rx_len);
+    // Transmit HALT; no response expected (timeout is OK)
+    mfrc522_write_reg(dev, MFRC522_REG_COMMAND, MFRC522_CMD_IDLE);
+    mfrc522_write_reg(dev, MFRC522_REG_COM_IRQ, 0x7F);
+    mfrc522_write_reg(dev, MFRC522_REG_FIFO_LEVEL, 0x80);
+    for (int i = 0; i < 4; i++)
+        mfrc522_write_reg(dev, MFRC522_REG_FIFO_DATA, cmd[i]);
+    mfrc522_write_reg(dev, MFRC522_REG_BIT_FRAMING, 0x00);
+    mfrc522_write_reg(dev, MFRC522_REG_COMMAND, MFRC522_CMD_TRANSCEIVE);
+    mfrc522_write_reg(dev, MFRC522_REG_BIT_FRAMING, 0x80); // StartSend
 
-    // The PICC does not respond to HALT; ignore result
+    uint16_t timeout = 50;
+    while (timeout--) {
+        uint8_t irq = mfrc522_read_reg(dev, MFRC522_REG_COM_IRQ);
+        if (irq & 0x01) break; // TimerIrq -> OK for HALT
+        if (irq & 0x30) break; // RxIrq/IdleIrq
+        vTaskDelay(1);
+    }
+
+    // StopSend
+    uint8_t bitfr = mfrc522_read_reg(dev, MFRC522_REG_BIT_FRAMING);
+    mfrc522_write_reg(dev, MFRC522_REG_BIT_FRAMING, bitfr & ~0x80);
 }
 
 void mfrc522_stop_crypto(mfrc522_t *dev) {
