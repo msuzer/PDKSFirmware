@@ -21,11 +21,16 @@ static QueueHandle_t rfid_queue;
 
 static void rfid_task(void *arg) {
     bool card_was_present = false;
+    bool awaiting_absent = false;
 
     while (1) {
         bool card_present = mfrc522_is_card_present(&mfrc);
 
-        if (card_present && !card_was_present) {
+        if (card_present != card_was_present) {
+            ESP_LOGI(TAG, "card_present=%d", card_present);
+        }
+
+        if (card_present && !card_was_present && !awaiting_absent) {
 
             uint8_t uid[10];
             uint8_t uid_len = 0;
@@ -44,10 +49,18 @@ static void rfid_task(void *arg) {
 
                 mfrc522_halt(&mfrc);
                 mfrc522_stop_crypto(&mfrc);
+
+                // Only allow next event after the card is removed
+                awaiting_absent = true;
             }
         }
 
-        card_was_present = card_present;
+        if (!card_present) {
+            card_was_present = false;
+            awaiting_absent = false;
+        } else {
+            card_was_present = true;
+        }
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }

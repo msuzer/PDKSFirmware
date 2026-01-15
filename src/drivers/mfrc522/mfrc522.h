@@ -17,8 +17,16 @@
 #define MFRC522_REG_CONTROL        0x0C
 #define MFRC522_REG_BIT_FRAMING    0x0D
 #define MFRC522_REG_MODE           0x11
+#define MFRC522_REG_TX_MODE        0x12
+#define MFRC522_REG_RX_MODE        0x13
 #define MFRC522_REG_TX_CONTROL     0x14
 #define MFRC522_REG_TX_ASK         0x15
+#define MFRC522_REG_MOD_WIDTH      0x24
+#define MFRC522_REG_TMODE          0x2A
+#define MFRC522_REG_TPRESCALER     0x2B
+#define MFRC522_REG_TRELOAD_H      0x2C
+#define MFRC522_REG_TRELOAD_L      0x2D
+#define MFRC522_REG_COLL           0x0E
 #define MFRC522_REG_CRC_RESULT_L   0x22
 #define MFRC522_REG_CRC_RESULT_H   0x21
 #define MFRC522_REG_VERSION        0x37
@@ -31,7 +39,9 @@
 
 /* ================= PICC ================= */
 #define PICC_CMD_REQA              0x26
-#define PICC_CMD_ANTICOLL_CL1      0x93
+#define PICC_CMD_ANTICOLL_CL1      0x93  // Also used as SEL CL1
+#define PICC_CMD_SEL_CL1           0x93
+#define PICC_CMD_CT                0x88
 #define PICC_CMD_HALT              0x50
 
 /* ================= API ================= */

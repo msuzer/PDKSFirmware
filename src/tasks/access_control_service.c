@@ -18,7 +18,5 @@ void access_control_task(void *arg) {
                 printf(" %02X", evt.uid[i]);
             printf("\n");
         }
-
-        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
