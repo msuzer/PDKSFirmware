@@ -1,58 +1,91 @@
 #include "rfid_service.h"
 #include "drivers/mfrc522/mfrc522.h"
+#include "drivers/spi/spi_bus.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#include "services/logger/logger.h"
+
+// #include "services/logger/logger.h"
+#include "esp_log.h"
 #include <string.h>
 
+#define TAG "RFID"
+
+#define RFID_TASK_STACK   4096
+#define RFID_TASK_PRIO    5
+#define RFID_QUEUE_LEN   4
+
+static mfrc522_t mfrc;
 static QueueHandle_t rfid_queue;
 
-static void rfid_task(void *arg)
-{
-    uint8_t uid[10];
-    uint8_t uid_len;
+static void rfid_task(void *arg) {
+    bool card_was_present = false;
 
     while (1) {
-        if (mfrc522_is_card_present()) {
-            if (mfrc522_read_uid(uid, &uid_len)) {
+        bool card_present = mfrc522_is_card_present(&mfrc);
+
+        if (card_present && !card_was_present) {
+
+            uint8_t uid[10];
+            uint8_t uid_len = 0;
+
+            if (mfrc522_read_uid(&mfrc, uid, &uid_len)) {
+
                 rfid_event_t evt = {0};
                 evt.uid_len = uid_len;
                 memcpy(evt.uid, uid, uid_len);
 
-                xQueueSend(rfid_queue, &evt, 0);
+                if (xQueueSend(rfid_queue, &evt, 0) == pdTRUE) {
+                    ESP_LOGI(TAG, "UID event queued");
+                } else {
+                    ESP_LOGW(TAG, "RFID queue full");
+                }
 
-                log_info("RFID UID event queued");
-                vTaskDelay(pdMS_TO_TICKS(1000)); // debounce
+                mfrc522_halt(&mfrc);
+                mfrc522_stop_crypto(&mfrc);
             }
         }
+
+        card_was_present = card_present;
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
-void rfid_service_start(void)
-{
-    if (!mfrc522_init()) {
-        log_error("MFRC522 init failed");
-        return;
-    }
+bool rfid_service_start(int mfrc_cs_pin) {
+    static bool started = false;
+    if (started)
+        return true;
 
-    rfid_queue = xQueueCreate(5, sizeof(rfid_event_t));
+    /* Ensure SPI bus is up */
+    if (spi_bus_init() != ESP_OK)
+        return false;
 
-    xTaskCreate(
-        rfid_task,
-        "rfid_task",
-        4096,
-        NULL,
-        5,
-        NULL
-    );
+    /* Init MFRC522 device */
+    if (!mfrc522_init(&mfrc, mfrc_cs_pin))
+        return false;
 
-    log_info("RFID service started");
+    rfid_queue = xQueueCreate(RFID_QUEUE_LEN, sizeof(rfid_event_t));
+    if (!rfid_queue)
+        return false;
+
+    if (xTaskCreate(rfid_task,
+                    "rfid_task",
+                    RFID_TASK_STACK,
+                    NULL,
+                    RFID_TASK_PRIO,
+                    NULL) != pdPASS)
+        return false;
+
+    started = true;
+    ESP_LOGI(TAG, "RFID service started");
+
+    uint8_t v = mfrc522_read_version(&mfrc);
+    ESP_LOGI(TAG, "MFRC522 version = 0x%02X", v);
+
+    return true;
 }
 
-bool rfid_get_event(rfid_event_t *event, TickType_t timeout)
-{
-    if (!rfid_queue || !event) return false;
-    return xQueueReceive(rfid_queue, event, timeout) == pdTRUE;
+QueueHandle_t rfid_service_get_queue(void) {
+    return rfid_queue;
 }

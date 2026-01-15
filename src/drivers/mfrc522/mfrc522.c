@@ -6,87 +6,135 @@
 #include "pins.h"
 #include "services/logger/logger.h"
 
-#define MFRC522_CS_LOW()   { gpio_set_level(MFRC522_CS_PIN, 0); esp_rom_delay_us(5);}
-#define MFRC522_CS_HIGH()  { gpio_set_level(MFRC522_CS_PIN, 1); esp_rom_delay_us(5);}
 
-static spi_device_handle_t spi;
-
-static uint8_t mfrc522_read_reg(uint8_t reg)
+static uint8_t mfrc522_read_reg(mfrc522_t *dev, uint8_t reg)
 {
-    uint8_t tx[] = { (reg << 1) | 0x80, 0x00 };
-    uint8_t rx[2];
+    uint8_t tx[2] = { (reg << 1) | 0x80, 0x00 };
+    uint8_t rx[2] = {0};
 
-    spi_transaction_t t = {
-        .length = 16,
-        .tx_buffer = tx,
-        .rx_buffer = rx
-    };
-
-    MFRC522_CS_LOW();
-    spi_device_transmit(spi, &t);
-    MFRC522_CS_HIGH();
-
+    spi_bus_transfer(&dev->spi, tx, rx, 16);
     return rx[1];
 }
 
-static void mfrc522_write_reg(uint8_t reg, uint8_t val)
+static void mfrc522_write_reg(mfrc522_t *dev, uint8_t reg, uint8_t val)
 {
-    uint8_t tx[] = { (reg << 1) & 0x7E, val };
-    spi_transaction_t t = {
-        .length = 16,
-        .tx_buffer = tx
-    };
-
-    MFRC522_CS_LOW();
-    spi_device_transmit(spi, &t);
-    MFRC522_CS_HIGH();
+    uint8_t tx[2] = { (reg << 1) & 0x7E, val };
+    spi_bus_transfer(&dev->spi, tx, NULL, 16);
 }
 
-bool mfrc522_init(void)
+static bool mfrc522_transceive(mfrc522_t *dev,
+                               const uint8_t *tx, uint8_t tx_len,
+                               uint8_t *rx, uint8_t *rx_len)
 {
-    spi_bus_config_t buscfg = {
-        .mosi_io_num = SPI_MOSI_PIN,
-        .miso_io_num = SPI_MISO_PIN,
-        .sclk_io_num = SPI_SCK_PIN,
-        .max_transfer_sz = 64
-    };
+    if (!dev || !tx || tx_len == 0)
+        return false;
 
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 1 * 1000 * 1000,
-        .mode = 0,
-        .spics_io_num = -1, //MFRC522_CS_PIN,
-        .queue_size = 1
-    };
+    /* 1) Stop any active command */
+    mfrc522_write_reg(dev, MFRC522_REG_COMMAND, MFRC522_CMD_IDLE);
 
-    gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << MFRC522_CS_PIN),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
-    };
-    gpio_config(&io_conf);
+    /* 2) Flush FIFO */
+    mfrc522_write_reg(dev, MFRC522_REG_FIFO_LEVEL, 0x80);
 
-    // CS idle high
-    MFRC522_CS_HIGH();
+    /* 3) Write TX data */
+    for (uint8_t i = 0; i < tx_len; i++)
+        mfrc522_write_reg(dev, MFRC522_REG_FIFO_DATA, tx[i]);
 
-    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO));
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, &spi));
+    /* 4) Start transceive */
+    mfrc522_write_reg(dev, MFRC522_REG_COMMAND, MFRC522_CMD_TRANSCEIVE);
 
+    /* 5) StartSend = 1 (preserve current bit framing, e.g., 7-bit for REQA) */
+    uint8_t bitfr = mfrc522_read_reg(dev, MFRC522_REG_BIT_FRAMING);
+    mfrc522_write_reg(dev, MFRC522_REG_BIT_FRAMING, bitfr | 0x80);
+
+    /* 6) Clear irq flags and wait for RX or Idle or timeout */
+    mfrc522_write_reg(dev, MFRC522_REG_COM_IRQ, 0x7F); // Clear all irq flags
+    uint16_t timeout = 2000;
+    bool got_irq = false;
+    while (timeout--) {
+        uint8_t irq = mfrc522_read_reg(dev, MFRC522_REG_COM_IRQ);
+        if (irq & 0x18) { // RxIrq(0x10) or IdleIrq(0x08)
+            got_irq = true;
+            break;
+        }
+        vTaskDelay(1);
+    }
+
+    /* StopSend = 0 (clear StartSend, keep framing bits intact) */
+    mfrc522_write_reg(dev, MFRC522_REG_BIT_FRAMING, bitfr & ~0x80);
+
+    if (!got_irq) {
+        // Timeout waiting for response
+        return false;
+    }
+
+    /* 7) Check errors */
+    uint8_t err = mfrc522_read_reg(dev, MFRC522_REG_ERROR);
+    if (err & 0x13)     // BufferOvfl | ParityErr | ProtocolErr
+        return false;
+
+    /* 8) Read RX data */
+    if (rx && rx_len) {
+        uint8_t fifo_len = mfrc522_read_reg(dev, MFRC522_REG_FIFO_LEVEL);
+        if (fifo_len > *rx_len)
+            fifo_len = *rx_len;
+
+        for (uint8_t i = 0; i < fifo_len; i++)
+            rx[i] = mfrc522_read_reg(dev, MFRC522_REG_FIFO_DATA);
+
+        *rx_len = fifo_len;
+    }
+
+    return true;
+}
+
+bool mfrc522_is_card_present(mfrc522_t *dev)
+{
+    if (!dev)
+        return false;
+
+    uint8_t cmd = PICC_CMD_REQA;
+    uint8_t atqa[2];
+    uint8_t len = sizeof(atqa);
+
+    // REQA must be sent as 7 bits
+    mfrc522_write_reg(dev, MFRC522_REG_BIT_FRAMING, 0x07);
+
+    bool ok = mfrc522_transceive(dev, &cmd, 1, atqa, &len);
+    // Restore to 8-bit framing for subsequent operations
+    mfrc522_write_reg(dev, MFRC522_REG_BIT_FRAMING, 0x00);
+
+    if (!ok)
+        return false;
+
+    // ATQA must be exactly 2 bytes
+    return (len == 2);
+}
+
+bool mfrc522_init(mfrc522_t *dev, int cs_gpio)
+{
+    if (!dev)
+        return false;
+
+    if (spi_bus_add_client(&dev->spi,
+                           cs_gpio,
+                           2 * 1000 * 1000,  // 2 MHz safe default
+                           0,                // SPI mode 0
+                           false) != ESP_OK)
+        return false;
+
+    // Soft reset
+    mfrc522_write_reg(dev, MFRC522_REG_COMMAND, MFRC522_CMD_SOFT_RESET);
     vTaskDelay(pdMS_TO_TICKS(50));
 
-    uint8_t version = mfrc522_read_reg(0x37);
-    log_info("MFRC522 version: 0x%02X", version);
+    // Recommended init sequence
+    mfrc522_write_reg(dev, MFRC522_REG_MODE, 0x3D);
+    mfrc522_write_reg(dev, MFRC522_REG_TX_ASK, 0x40);      // 100% ASK modulation (ISO14443A)
+    mfrc522_write_reg(dev, MFRC522_REG_TX_CONTROL, 0x03);  // Turn antenna drivers on
 
-    return (version == 0x91 || version == 0x92);
+    return true;
 }
 
-bool mfrc522_is_card_present(void)
-{
-    return (mfrc522_read_reg(0x04) & 0x01) == 0;
-}
-
-bool mfrc522_read_uid(uint8_t *uid, uint8_t *uid_len)
+bool mfrc522_read_uid(mfrc522_t *dev, uint8_t *uid, uint8_t *uid_len)
 {
     if (!uid || !uid_len) return false;
 
@@ -95,4 +143,38 @@ bool mfrc522_read_uid(uint8_t *uid, uint8_t *uid_len)
 
     *uid_len = 4;
     return true;
+}
+
+uint8_t mfrc522_read_version(mfrc522_t *dev)
+{
+    if (!dev)
+        return 0x00;
+
+    return mfrc522_read_reg(dev, MFRC522_REG_VERSION);
+}
+
+void mfrc522_halt(mfrc522_t *dev)
+{
+    if (!dev)
+        return;
+
+    uint8_t cmd[2] = {
+        PICC_CMD_HALT,
+        0x00
+    };
+
+    uint8_t rx_len = 0;
+    mfrc522_transceive(dev, cmd, 2, NULL, &rx_len);
+    
+    // The PICC does not respond to HALT; ignore result
+}
+
+void mfrc522_stop_crypto(mfrc522_t *dev)
+{
+    if (!dev)
+        return;
+
+    uint8_t val = mfrc522_read_reg(dev, MFRC522_REG_STATUS2);
+    val &= ~(1 << 3); // Clear MFCrypto1On bit
+    mfrc522_write_reg(dev, MFRC522_REG_STATUS2, val);
 }

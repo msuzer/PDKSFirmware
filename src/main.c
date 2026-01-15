@@ -1,3 +1,5 @@
+#include "drivers/spi/spi_bus.h"
+
 #include "services/logger/logger.h"
 #include "services/led/led.h"
 #include "services/buzzer/buzzer.h"
@@ -31,7 +33,7 @@ static void show_date_time() {
     struct tm now;
     if (datetime_get(&now)) {
         char buf[32];
-        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &now);
+        strftime(buf, sizeof(buf), "%d-%m-%Y %H:%M:%S", &now);
         log_info("RTC time: %s", buf);
     } else {
         log_error("Failed to read RTC");
@@ -64,13 +66,14 @@ void app_main(void) {
     logger_init();
     prefs_init();
     i2c_bus_init();
+    spi_bus_init();
     led_init();
     buzzer_init();
     relay_init();
     datetime_init();
     oled_init();
 
-    rfid_service_start();
+    rfid_service_start(MFRC522_CS_PIN);
 
     // rtc_set_once_for_test();
     const user_prefs_t *p = prefs_get();
@@ -86,7 +89,7 @@ void app_main(void) {
     show_date_time();
 
     xTaskCreate(led_blink_task, "led_blink", 2048, NULL, 5, NULL);
-    // xTaskCreate(access_control_task, "access_ctrl", 4096, NULL, 6, NULL);
+    xTaskCreate(access_control_task, "access_ctrl", 4096, NULL, 6, NULL);
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(1000));

@@ -8,12 +8,12 @@ Notes:
 
 #pragma once
 
-#define USER_LED_PIN               48 // ESP32 pin GPIO48
-#define USER_BUZZER_PIN            14 // ESP32 pin GPIO14
-#define USER_OPEN_DOOR_PIN         21 // ESP32 pin GPIO21
+#define USER_LED_PIN                48 // ESP32 pin GPIO48
+#define USER_BUZZER_PIN             14 // ESP32 pin GPIO14
+#define USER_OPEN_DOOR_PIN          21 // ESP32 pin GPIO21
 
-#define MFRC522_CS_PIN              17  // ESP32 pin GPIO17
 #define W5500_CS_PIN                19  // ESP32 pin GPIO19
+#define MFRC522_CS_PIN              20  // ESP32 pin GPIO20
 
 #define I2C_SDA_PIN                 4  // ESP32 pin GPIO4
 #define I2C_SCL_PIN                 5  // ESP32 pin GPIO5

@@ -7,25 +7,18 @@
 #include "services/datetime/datetime.h"
 #include "services/logger/logger.h"
 
-void access_control_task(void *arg)
-{
+void access_control_task(void *arg) {
+    QueueHandle_t q = rfid_service_get_queue();
     rfid_event_t evt;
 
     while (1) {
-        if (rfid_get_event(&evt, portMAX_DELAY)) {
-            log_info("Card detected, UID length: %d", evt.uid_len);
-
-            // TODO: check UID against authorized list
-            bool authorized = true; // TEMP
-
-            if (authorized) {
-                log_info("Access granted");
-                relay_open(3000);
-                buzzer_beep(100);
-            } else {
-                log_warn("Access denied");
-                buzzer_beep(500);
-            }
+        if (xQueueReceive(q, &evt, portMAX_DELAY)) {
+            printf("RFID UID:");
+            for (int i = 0; i < evt.uid_len; i++)
+                printf(" %02X", evt.uid[i]);
+            printf("\n");
         }
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
