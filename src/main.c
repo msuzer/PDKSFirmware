@@ -1,3 +1,5 @@
+#include <driver/gpio.h>
+
 #include "drivers/spi/spi_bus.h"
 
 #include "services/led/led.h"

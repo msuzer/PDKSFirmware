@@ -1,61 +1,41 @@
-#include "ds3231.h"
-#include "services/i2c/i2c_bus.h"
-
-#include "driver/i2c.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "ds3231.h"
+#include "services/i2c/i2c_bus.h"
 
 #include <esp_log.h>
 #define TAG "DS3231"
 
 #define DS3231_ADDR 0x68
+static i2c_master_dev_handle_t ds3231_dev;
 
 /* BCD helpers */
-static uint8_t bcd_to_dec(uint8_t val)
-{
+static uint8_t bcd_to_dec(uint8_t val) {
     return (val >> 4) * 10 + (val & 0x0F);
 }
 
-static uint8_t dec_to_bcd(uint8_t val)
-{
+static uint8_t dec_to_bcd(uint8_t val) {
     return ((val / 10) << 4) | (val % 10);
 }
 
-static esp_err_t ds3231_read(uint8_t reg, uint8_t *data, size_t len)
-{
-    i2c_port_t port = i2c_bus_get();
-
-    return i2c_master_write_read_device(
-        port,
-        DS3231_ADDR,
-        &reg,
-        1,
-        data,
-        len,
-        pdMS_TO_TICKS(100)
-    );
+static esp_err_t ds3231_read(uint8_t reg, uint8_t *data, size_t len) {
+    return i2c_bus_txrx(ds3231_dev, &reg, 1, data, len, 100);
 }
 
-static esp_err_t ds3231_write(uint8_t reg, const uint8_t *data, size_t len)
-{
-    i2c_port_t port = i2c_bus_get();
-
+static esp_err_t ds3231_write(uint8_t reg, const uint8_t *data, size_t len) {
     uint8_t buf[len + 1];
     buf[0] = reg;
     for (size_t i = 0; i < len; i++)
         buf[i + 1] = data[i];
-
-    return i2c_master_write_to_device(
-        port,
-        DS3231_ADDR,
-        buf,
-        len + 1,
-        pdMS_TO_TICKS(100)
-    );
+    return i2c_bus_write(ds3231_dev, buf, len + 1, 100);
 }
 
-bool ds3231_init(void)
-{
+bool ds3231_init(void) {
+    // Ensure bus is initialized and add device
+    i2c_bus_init();
+    ds3231_dev = i2c_bus_add_device(DS3231_ADDR, 400000);
+
     uint8_t dummy;
     if (ds3231_read(0x00, &dummy, 1) != ESP_OK) {
         ESP_LOGE(TAG, "DS3231 not responding");
@@ -66,8 +46,7 @@ bool ds3231_init(void)
     return true;
 }
 
-bool ds3231_get_time(struct tm *t)
-{
+bool ds3231_get_time(struct tm *t) {
     if (!t) return false;
 
     uint8_t buf[7];
@@ -86,8 +65,7 @@ bool ds3231_get_time(struct tm *t)
     return true;
 }
 
-bool ds3231_set_time(const struct tm *t)
-{
+bool ds3231_set_time(const struct tm *t) {
     if (!t) return false;
 
     uint8_t buf[7];

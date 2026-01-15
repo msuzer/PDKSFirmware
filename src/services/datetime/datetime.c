@@ -1,7 +1,9 @@
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
 #include "datetime.h"
 #include "services/i2c/i2c_bus.h"
 #include "drivers/ds3231/ds3231.h"
-#include "freertos/semphr.h"
 
 #include <esp_log.h>
 #define TAG "DateTime"
