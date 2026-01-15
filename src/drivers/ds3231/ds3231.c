@@ -1,10 +1,12 @@
 #include "ds3231.h"
 #include "services/i2c/i2c_bus.h"
-#include "services/logger/logger.h"
 
 #include "driver/i2c.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include <esp_log.h>
+#define TAG "DS3231"
 
 #define DS3231_ADDR 0x68
 
@@ -56,11 +58,11 @@ bool ds3231_init(void)
 {
     uint8_t dummy;
     if (ds3231_read(0x00, &dummy, 1) != ESP_OK) {
-        log_error("DS3231 not responding");
+        ESP_LOGE(TAG, "DS3231 not responding");
         return false;
     }
 
-    log_info("DS3231 detected");
+    ESP_LOGI(TAG, "DS3231 detected");
     return true;
 }
 
@@ -69,8 +71,10 @@ bool ds3231_get_time(struct tm *t)
     if (!t) return false;
 
     uint8_t buf[7];
-    if (ds3231_read(0x00, buf, sizeof(buf)) != ESP_OK)
+    if (ds3231_read(0x00, buf, sizeof(buf)) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read time from DS3231");
         return false;
+    }
 
     t->tm_sec  = bcd_to_dec(buf[0] & 0x7F);
     t->tm_min  = bcd_to_dec(buf[1]);

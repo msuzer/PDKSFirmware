@@ -5,11 +5,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-
-// #include "services/logger/logger.h"
-#include "esp_log.h"
 #include <string.h>
 
+#include <esp_log.h>
 #define TAG "RFID"
 
 #define RFID_TASK_STACK   4096

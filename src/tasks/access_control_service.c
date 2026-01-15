@@ -5,7 +5,6 @@
 #include "services/relay/relay.h"
 #include "services/buzzer/buzzer.h"
 #include "services/datetime/datetime.h"
-#include "services/logger/logger.h"
 
 void access_control_task(void *arg) {
     QueueHandle_t q = rfid_service_get_queue();

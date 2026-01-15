@@ -1,8 +1,10 @@
 #include "datetime.h"
 #include "services/i2c/i2c_bus.h"
-#include "services/logger/logger.h"
 #include "drivers/ds3231/ds3231.h"
 #include "freertos/semphr.h"
+
+#include <esp_log.h>
+#define TAG "DateTime"
 
 #define DS3231_ADDR 0x68
 
@@ -16,11 +18,11 @@ bool datetime_init(void)
     i2c_bus_init();
 
     if (!ds3231_init()) {
-        log_error("RTC init failed");
+        ESP_LOGE(TAG, "RTC init failed");
         return false;
     }
 
-    log_info("DateTime service ready");
+    ESP_LOGI(TAG, "DateTime service ready");
     return true;
 }
 
@@ -62,6 +64,7 @@ void datetime_format(char *buffer, size_t len)
     struct tm t;
     if (!datetime_get(&t)) {
         snprintf(buffer, len, "Invalid Time");
+        ESP_LOGW(TAG, "Failed to get time for formatting");
         return;
     }
 

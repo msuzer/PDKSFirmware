@@ -1,6 +1,5 @@
 #include "drivers/spi/spi_bus.h"
 
-#include "services/logger/logger.h"
 #include "services/led/led.h"
 #include "services/buzzer/buzzer.h"
 #include "services/oled/oled.h"
@@ -15,6 +14,9 @@
 #include <time.h>
 
 #include "pins.h"
+
+#include <esp_log.h>
+#define TAG "Main"
 
 static void rtc_set_once_for_test(void) {
     struct tm t = {0};
@@ -34,9 +36,9 @@ static void show_date_time() {
     if (datetime_get(&now)) {
         char buf[32];
         strftime(buf, sizeof(buf), "%d-%m-%Y %H:%M:%S", &now);
-        log_info("RTC time: %s", buf);
+        ESP_LOGI(TAG, "RTC time: %s", buf);
     } else {
-        log_error("Failed to read RTC");
+        ESP_LOGE(TAG, "Failed to read RTC");
     }
 }
 
@@ -63,7 +65,6 @@ void spi_cs_init(void) {
 
 void app_main(void) {
     spi_cs_init();     // 🔴 FIRST
-    logger_init();
     prefs_init();
     i2c_bus_init();
     spi_bus_init();

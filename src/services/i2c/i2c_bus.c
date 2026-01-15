@@ -1,13 +1,14 @@
 #include "i2c_bus.h"
 #include "pins.h"
-#include "services/logger/logger.h"
+
+#include <esp_log.h>
+#define TAG "I2C_BUS"
 
 static i2c_port_t i2c_port = I2C_NUM_0;
 static bool i2c_inited = false;
 
 
-i2c_port_t i2c_bus_init(void)
-{
+i2c_port_t i2c_bus_init(void) {
     if (i2c_inited) {
         return i2c_port;
     }
@@ -24,12 +25,11 @@ i2c_port_t i2c_bus_init(void)
     i2c_param_config(i2c_port, &conf);
     i2c_driver_install(i2c_port, conf.mode, 0, 0, 0);
 
-    log_info("I2C bus initialized");
+    ESP_LOGI(TAG, "I2C bus initialized");
     i2c_inited = true;
     return i2c_port;
 }
 
-i2c_port_t i2c_bus_get(void)
-{
+i2c_port_t i2c_bus_get(void) {
     return i2c_port;
 }
