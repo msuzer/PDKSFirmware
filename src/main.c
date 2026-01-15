@@ -11,9 +11,14 @@
 #include "services/i2c/i2c_bus.h"
 #include "services/relay/relay.h"
 #include "services/rfid/rfid_service.h"
+#include "services/net/net_manager.h"
 
 #include "tasks/access_control_service.h"
 #include <time.h>
+
+#include "esp_netif.h"
+#include "esp_event.h"
+#include "nvs_flash.h"
 
 #include "pins.h"
 
@@ -34,14 +39,14 @@ static void rtc_set_once_for_test(void) {
 }
 
 static void show_date_time() {
-    struct tm now;
-    if (datetime_get(&now)) {
-        char buf[32];
-        strftime(buf, sizeof(buf), "%d-%m-%Y %H:%M:%S", &now);
-        ESP_LOGI(TAG, "RTC time: %s", buf);
-    } else {
-        ESP_LOGE(TAG, "Failed to read RTC");
+    char buf[32];
+
+    if (!datetime_format(buf, sizeof(buf))) {
+        ESP_LOGE(TAG, "Failed to format date/time");
+        return;
     }
+
+    ESP_LOGI(TAG, "Current DateTime: %s", buf);
 }
 
 void spi_cs_init(void) {
@@ -73,8 +78,14 @@ void app_main(void) {
     led_init(USER_LED_PIN);
     buzzer_init(USER_BUZZER_PIN);
     relay_init(USER_OPEN_DOOR_PIN);
-    datetime_init();
     oled_init();
+
+    esp_netif_init();
+    esp_event_loop_create_default();
+
+    net_manager_init();
+    net_manager_start();
+    datetime_init();
 
     rfid_service_start(MFRC522_CS_PIN);
 
