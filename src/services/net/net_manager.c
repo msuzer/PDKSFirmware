@@ -1,4 +1,5 @@
 #include "services/net/net_manager.h"
+#include "services/cloud/cloud_sync.h"
 
 /* FreeRTOS */
 #include "freertos/FreeRTOS.h"
@@ -59,6 +60,9 @@ static void wifi_event_handler(void *arg,
         xEventGroupSetBits(s_net_event_group, NET_CONNECTED_BIT | NET_WIFI_ACTIVE_BIT);
         xEventGroupClearBits(s_net_event_group, NET_ETH_ACTIVE_BIT);
         s_active_if = NET_IF_WIFI;
+
+        cloud_sync_kick();
+
         return;
     }
 }

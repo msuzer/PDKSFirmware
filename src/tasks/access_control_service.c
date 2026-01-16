@@ -1,5 +1,5 @@
 #include "include/project_common.h"
-
+#include "services/cloud/cloud_sync.h"
 #include "services/rfid/rfid_service.h"
 #include "services/rfid/rfid_utils.h"
 #include "services/relay/relay.h"
@@ -32,6 +32,7 @@ void access_control_task(void *arg) {
             }
 
             access_log_append_rfid(&evt, authorized, false); // cloud not sent yet
+            cloud_sync_kick();
         }
     }
 }
