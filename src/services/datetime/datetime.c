@@ -97,6 +97,14 @@ void show_date_time() {
 
 /* Helper to set system time from RTC */
 
+/* this is a temporary function to set RTC for testing purposes, not needed in production */
+/*
+static void rtc_set_once_for_test(void) {
+    // Example: set to 2026-01-14 02:10:00 (local)
+    struct tm t = {0, 8, 2, 14, 0, 2026 - 1900, 0, 0, -1};
+    datetime_set(&t);
+}*/
+
 static void set_system_time_from_rtc(const struct tm *tm) {
     time_t t = mktime((struct tm *)tm);
     struct timeval tv = {

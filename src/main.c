@@ -12,6 +12,7 @@
 #include "services/relay/relay.h"
 #include "services/rfid/rfid_service.h"
 #include "services/net/net_manager.h"
+#include "services/sd/sd_service.h"
 
 #include "tasks/access_control_service.h"
 #include <time.h>
@@ -25,19 +26,6 @@
 #include <esp_log.h>
 #define TAG "Main"
 
-static void rtc_set_once_for_test(void) {
-    struct tm t = {0};
-    // Example: set to 2026-01-14 02:10:00 (local)
-    t.tm_year = 2026 - 1900;
-    t.tm_mon  = 0;
-    t.tm_mday = 14;
-    t.tm_hour = 2;
-    t.tm_min  = 8;
-    t.tm_sec  = 0;
-
-    datetime_set(&t);
-}
-
 void spi_cs_init(void) {
     gpio_config_t io_conf = {
         .mode = GPIO_MODE_OUTPUT,
@@ -45,6 +33,11 @@ void spi_cs_init(void) {
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
+
+    // SD-CARD CS
+    io_conf.pin_bit_mask = (1ULL << SD_CS_PIN);
+    gpio_config(&io_conf);
+    gpio_set_level(SD_CS_PIN, 1);
 
     // MFRC522 CS
     io_conf.pin_bit_mask = (1ULL << MFRC522_CS_PIN);
@@ -56,8 +49,14 @@ void spi_cs_init(void) {
     gpio_config(&io_conf);
     gpio_set_level(W5500_CS_PIN, 1);
 
+    // Set pull-up for SPI pins, for sd_card stability
+    // gpio_set_pull_mode(SPI_MISO_PIN, GPIO_PULLUP_ONLY);
+    // gpio_set_pull_mode(SPI_MOSI_PIN, GPIO_PULLUP_ONLY);
+
     // Add more SPI devices here (SD, etc.)
 }
+
+static spi_client_t sd_client;
 
 void app_main(void) {
     spi_cs_init();     // 🔴 FIRST
@@ -75,6 +74,7 @@ void app_main(void) {
     net_manager_init();
     net_manager_start();
     datetime_init();
+    sd_service_init(&sd_client, SD_CS_PIN);
 
     rfid_service_start(MFRC522_CS_PIN);
 

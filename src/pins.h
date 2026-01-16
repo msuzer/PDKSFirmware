@@ -12,6 +12,7 @@ Notes:
 #define USER_BUZZER_PIN             14 // ESP32 pin GPIO14
 #define USER_OPEN_DOOR_PIN          21 // ESP32 pin GPIO21
 
+#define SD_CS_PIN                   1  // ESP32 pin GPIO1
 #define W5500_CS_PIN                19  // ESP32 pin GPIO19
 #define MFRC522_CS_PIN              20  // ESP32 pin GPIO20
 

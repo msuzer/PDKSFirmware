@@ -12,16 +12,16 @@
 #define RFID_TASK_PRIO    5
 #define RFID_QUEUE_LEN   4
 
-static mfrc522_t mfrc;
+static spi_client_t mfrc_client;
 static QueueHandle_t rfid_queue;
 
 static void rfid_task(void *arg) {
     while (1) {
-        if (mfrc522_is_card_present(&mfrc)) {
+        if (mfrc522_is_card_present()) {
             uint8_t uid[10];
             uint8_t uid_len = 0;
 
-            if (mfrc522_read_uid(&mfrc, uid, &uid_len)) {
+            if (mfrc522_read_uid(uid, &uid_len)) {
                 rfid_event_t evt = (rfid_event_t){0};
                 evt.uid_len = uid_len;
                 memcpy(evt.uid, uid, uid_len);
@@ -32,8 +32,8 @@ static void rfid_task(void *arg) {
             }
 
             // Put card in HALT, stop crypto; this makes REQA ignore the card
-            mfrc522_halt(&mfrc);
-            mfrc522_stop_crypto(&mfrc);
+            mfrc522_halt();
+            mfrc522_stop_crypto();
         }
 
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -48,7 +48,7 @@ bool rfid_service_start(int mfrc_cs_pin) {
     /* SPI bus must be initialized in main with pin args */
 
     /* Init MFRC522 device */
-    if (!mfrc522_init(&mfrc, mfrc_cs_pin))
+    if (!mfrc522_init(&mfrc_client, mfrc_cs_pin))
         return false;
 
     rfid_queue = xQueueCreate(RFID_QUEUE_LEN, sizeof(rfid_event_t));
@@ -66,7 +66,7 @@ bool rfid_service_start(int mfrc_cs_pin) {
     started = true;
     ESP_LOGI(TAG, "RFID service started");
 
-    uint8_t v = mfrc522_read_version(&mfrc);
+    uint8_t v = mfrc522_read_version();
     ESP_LOGI(TAG, "MFRC522 version = 0x%02X", v);
 
     return true;

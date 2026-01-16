@@ -46,21 +46,16 @@
 
 /* ================= API ================= */
 
-/* ========= MFRC522 device handle ========= */
-typedef struct {
-    spi_client_t spi;   // owned SPI client (from spi_bus)
-} mfrc522_t;
-
 /* ========= Lifecycle ========= */
-bool    mfrc522_init(mfrc522_t *dev, int cs_gpio);
+bool    mfrc522_init(spi_client_t *client, int cs_gpio);
 
 /* ========= Card operations ========= */
-bool    mfrc522_is_card_present(mfrc522_t *dev);
-bool    mfrc522_read_uid(mfrc522_t *dev, uint8_t *uid, uint8_t *uid_len);
+bool    mfrc522_is_card_present(void);
+bool    mfrc522_read_uid(uint8_t *uid, uint8_t *uid_len);
 
 /* ========= Card state control ========= */
-void    mfrc522_halt(mfrc522_t *dev);
-void    mfrc522_stop_crypto(mfrc522_t *dev);
+void    mfrc522_halt(void);
+void    mfrc522_stop_crypto(void);
 
 /* ========= Debug ========= */
-uint8_t mfrc522_read_version(mfrc522_t *dev);
+uint8_t mfrc522_read_version(void);
