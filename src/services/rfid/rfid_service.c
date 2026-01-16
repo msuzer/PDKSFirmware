@@ -1,4 +1,5 @@
 #include "rfid_service.h"
+#include "services/spi/shared_spi.h"
 #include "drivers/mfrc522/mfrc522.h"
 #include "drivers/spi/spi_bus.h"
 
@@ -16,7 +17,10 @@ static QueueHandle_t rfid_queue;
 
 static void rfid_task(void *arg) {
     while (1) {
-        if (mfrc522_is_card_present()) {
+        /* Guard shared SPI bus during RFID operations */
+        shared_spi_take(portMAX_DELAY);
+        bool present = mfrc522_is_card_present();
+        if (present) {
             uint8_t uid[10];
             uint8_t uid_len = 0;
 
@@ -34,6 +38,7 @@ static void rfid_task(void *arg) {
             mfrc522_halt();
             mfrc522_stop_crypto();
         }
+        shared_spi_give();
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }
@@ -45,6 +50,9 @@ bool rfid_service_start(const int mfrc_cs_pin) {
         return true;
 
     /* SPI bus must be initialized in main with pin args */
+
+    /* Init shared SPI guard */
+    shared_spi_init();
 
     /* Init MFRC522 device */
     if (!mfrc522_init(mfrc_cs_pin))

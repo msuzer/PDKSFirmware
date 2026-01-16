@@ -11,8 +11,10 @@
 #include "services/i2c/i2c_bus.h"
 #include "services/relay/relay.h"
 #include "services/rfid/rfid_service.h"
+#include "services/rfid/rfid_utils.h"
 #include "services/net/net_manager.h"
 #include "services/sd/sd_service.h"
+#include "services/sd/access_log.h"
 
 #include "tasks/access_control_service.h"
 #include <time.h>
@@ -24,9 +26,30 @@
 #include "pins.h"
 
 #include <esp_log.h>
-#define TAG "Main"
+#define TAG "MAIN"
 
 #define SHARED_SPI_HOST SPI2_HOST
+
+static bool dump_cb(const access_log_record_t *rec, void *ctx) {
+    static int record_count = 0;
+
+    record_count++;
+    const char *uid_str = rfid_uid_to_hex_str(rec->rfid_uid.uid, rec->rfid_uid.uid_len);
+
+    char ts_buf[32];
+    datetime_format(rec->unix_time, ts_buf, sizeof(ts_buf));
+
+    ESP_LOGI(TAG,
+        "Log #%d, UID: %s t=%s uid=%s res=%u sent=%u",
+        record_count,
+        uid_str,
+        ts_buf,
+        uid_str,
+        rec->result,
+        rec->via_network
+    );
+    return true;
+}
 
 void spi_cs_init(void) {
     gpio_config_t io_conf = {
@@ -94,6 +117,8 @@ void app_main(void) {
     oled_show_message(p->device_name, "System Ready");
 
     show_date_time();
+
+    access_log_iterate(dump_cb, NULL);
 
     xTaskCreate(access_control_task, "access_ctrl", 4096, NULL, 6, NULL);
 

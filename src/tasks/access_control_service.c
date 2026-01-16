@@ -5,6 +5,7 @@
 #include "services/relay/relay.h"
 #include "services/buzzer/buzzer.h"
 #include "services/datetime/datetime.h"
+#include "services/sd/access_log.h"
 
 #include <esp_log.h>
 #define TAG "ACCESS_CTRL"
@@ -29,6 +30,8 @@ void access_control_task(void *arg) {
                 ESP_LOGW(TAG, "Access denied");
                 buzzer_beep(500);
             }
+
+            access_log_append_rfid(&evt, authorized, false); // cloud not sent yet
         }
     }
 }

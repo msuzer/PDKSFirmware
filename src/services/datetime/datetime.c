@@ -53,7 +53,6 @@ bool datetime_get(struct tm *timeinfo) {
     return ok;
 }
 
-
 bool datetime_set(const struct tm *timeinfo) {
     if (!timeinfo) return false;
 
@@ -65,29 +64,30 @@ bool datetime_set(const struct tm *timeinfo) {
     return ok;
 }
 
-
 time_t datetime_now(void) {
     struct tm t;
     if (!datetime_get(&t)) return 0;
     return mktime(&t);
 }
 
-bool datetime_format(char *buffer, size_t len) {
-    struct tm t;
-    if (!datetime_get(&t)) {
+bool datetime_format(time_t ts, char *buffer, size_t len) {
+    if (ts == 0) {
         snprintf(buffer, len, "Invalid Time");
-        ESP_LOGW(TAG, "Failed to get time for formatting");
+        ESP_LOGW(TAG, "Invalid timestamp provided for formatting");
         return false;
     }
 
-    strftime(buffer, len, "%d-%m-%Y %H:%M:%S", &t);
+    struct tm t;
+    gmtime_r(&ts, &t); // format as UTC
+    strftime(buffer, len, "%d.%m.%Y %H:%M:%S", &t);
     return true;
 }
 
 void show_date_time() {
     char buf[32];
+    time_t now = datetime_now();
 
-    if (!datetime_format(buf, sizeof(buf))) {
+    if (!datetime_format(now, buf, sizeof(buf))) {
         ESP_LOGE(TAG, "Failed to format date/time");
         return;
     }
@@ -96,15 +96,6 @@ void show_date_time() {
 }
 
 /* Helper to set system time from RTC */
-
-/* this is a temporary function to set RTC for testing purposes, not needed in production */
-/*
-static void rtc_set_once_for_test(void) {
-    // Example: set to 2026-01-14 02:10:00 (local)
-    struct tm t = {0, 8, 2, 14, 0, 2026 - 1900, 0, 0, -1};
-    datetime_set(&t);
-}*/
-
 static void set_system_time_from_rtc(const struct tm *tm) {
     time_t t = mktime((struct tm *)tm);
     struct timeval tv = {

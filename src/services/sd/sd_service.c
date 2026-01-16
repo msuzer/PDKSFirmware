@@ -1,4 +1,5 @@
 #include "services/sd/sd_service.h"
+#include "services/spi/shared_spi.h"
 
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
@@ -99,10 +100,14 @@ bool sd_service_write_file(const char *path,
         return false;
     }
 
+    /* Ensure exclusive SPI access while doing file IO */
+    shared_spi_take(portMAX_DELAY);
+
     const char *mode = append ? "ab" : "wb";
     FILE *f = fopen(path, mode);
     if (!f) {
         ESP_LOGE(TAG, "Failed to open file: %s", path);
+        shared_spi_give();
         return false;
     }
 
@@ -111,6 +116,7 @@ bool sd_service_write_file(const char *path,
         if (w != len) {
             ESP_LOGE(TAG, "Short write: %u/%u", (unsigned)w, (unsigned)len);
             fclose(f);
+            shared_spi_give();
             return false;
         }
     }
@@ -118,6 +124,7 @@ bool sd_service_write_file(const char *path,
     fflush(f);
     fclose(f);
 
+    shared_spi_give();
     return true;
 }
 
@@ -126,6 +133,8 @@ bool sd_service_init(const int spi_host, const int cs_pin) {
         ESP_LOGI(TAG, "Already mounted");
         return true;
     }
+
+    shared_spi_init();
 
     esp_vfs_fat_sdmmc_mount_config_t mount_cfg = {
         .format_if_mount_failed = false,
@@ -143,7 +152,10 @@ bool sd_service_init(const int spi_host, const int cs_pin) {
 
     ESP_LOGI(TAG, "Mounting SD (SPI host=%d, CS=GPIO%d) at %s", host.slot, cs_pin, SD_MOUNT_POINT);
 
+    /* Mount may take time; guard SPI during mount */
+    shared_spi_take(portMAX_DELAY);
     esp_err_t err = esp_vfs_fat_sdspi_mount(SD_MOUNT_POINT, &host, &slot_cfg, &mount_cfg, &s_card);
+    shared_spi_give();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "SD mount failed: %s", esp_err_to_name(err));
         s_sd_mounted = false;
