@@ -26,6 +26,8 @@
 #include <esp_log.h>
 #define TAG "Main"
 
+#define SHARED_SPI_HOST SPI2_HOST
+
 void spi_cs_init(void) {
     gpio_config_t io_conf = {
         .mode = GPIO_MODE_OUTPUT,
@@ -56,25 +58,27 @@ void spi_cs_init(void) {
     // Add more SPI devices here (SD, etc.)
 }
 
-static spi_client_t sd_client;
-
 void app_main(void) {
     spi_cs_init();     // 🔴 FIRST
     prefs_init();
     i2c_bus_init(I2C_SDA_PIN, I2C_SCL_PIN);
-    spi_bus_init(SPI_MISO_PIN, SPI_MOSI_PIN, SPI_SCK_PIN);
+    spi_bus_init(SHARED_SPI_HOST, SPI_MISO_PIN, SPI_MOSI_PIN, SPI_SCK_PIN);
     led_init(USER_LED_PIN);
     buzzer_init(USER_BUZZER_PIN);
     relay_init(USER_OPEN_DOOR_PIN);
     oled_init();
 
+    nvs_flash_init();
     esp_netif_init();
     esp_event_loop_create_default();
 
     net_manager_init();
     net_manager_start();
     datetime_init();
-    sd_service_init(&sd_client, SD_CS_PIN);
+
+    if (!sd_service_init(SHARED_SPI_HOST, SD_CS_PIN)) {
+        ESP_LOGW(TAG, "SD not available, continuing without local logs");
+    }
 
     rfid_service_start(MFRC522_CS_PIN);
 

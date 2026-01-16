@@ -3,12 +3,11 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
-#define SPI_HOST SPI2_HOST
-
+static int _spi_device = -1;
 static SemaphoreHandle_t spi_mutex;
 static bool bus_ready = false;
 
-esp_err_t spi_bus_init(int miso_pin, int mosi_pin, int sck_pin) {
+esp_err_t spi_bus_init(const int spi_device, const int miso_pin, const int mosi_pin, const int sck_pin) {
     if (bus_ready)
         return ESP_OK;
 
@@ -21,13 +20,15 @@ esp_err_t spi_bus_init(int miso_pin, int mosi_pin, int sck_pin) {
         .max_transfer_sz = 256,
     };
 
-    esp_err_t err = spi_bus_initialize(SPI_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    _spi_device = spi_device;
+
+    esp_err_t err = spi_bus_initialize(_spi_device, &buscfg, SPI_DMA_CH_AUTO);
     if (err != ESP_OK)
         return err;
 
     spi_mutex = xSemaphoreCreateMutex();
     if (!spi_mutex) {
-        spi_bus_free(SPI_HOST);
+        spi_bus_free(_spi_device);
         return ESP_ERR_NO_MEM;
     }
 
@@ -55,7 +56,7 @@ esp_err_t spi_bus_add_client(spi_client_t *client,
         .flags = half_duplex ? SPI_DEVICE_HALFDUPLEX : 0,
     };
 
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI_HOST, &cfg, &client->dev));
+    ESP_ERROR_CHECK(spi_bus_add_device(_spi_device, &cfg, &client->dev));
     client->cs_gpio = cs_gpio;
 
     return ESP_OK;

@@ -8,7 +8,7 @@ typedef struct {
 } spi_client_t;
 
 /* ===== SPI BUS LIFECYCLE ===== */
-esp_err_t spi_bus_init(int miso_pin, int mosi_pin, int sck_pin);
+esp_err_t spi_bus_init(const int spi_device, const int miso_pin, const int mosi_pin, const int sck_pin);
 
 /* ===== CLIENT REGISTRATION ===== */
 esp_err_t spi_bus_add_client(spi_client_t *client,

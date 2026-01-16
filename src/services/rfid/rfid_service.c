@@ -12,7 +12,6 @@
 #define RFID_TASK_PRIO    5
 #define RFID_QUEUE_LEN   4
 
-static spi_client_t mfrc_client;
 static QueueHandle_t rfid_queue;
 
 static void rfid_task(void *arg) {
@@ -40,7 +39,7 @@ static void rfid_task(void *arg) {
     }
 }
 
-bool rfid_service_start(int mfrc_cs_pin) {
+bool rfid_service_start(const int mfrc_cs_pin) {
     static bool started = false;
     if (started)
         return true;
@@ -48,7 +47,7 @@ bool rfid_service_start(int mfrc_cs_pin) {
     /* SPI bus must be initialized in main with pin args */
 
     /* Init MFRC522 device */
-    if (!mfrc522_init(&mfrc_client, mfrc_cs_pin))
+    if (!mfrc522_init(mfrc_cs_pin))
         return false;
 
     rfid_queue = xQueueCreate(RFID_QUEUE_LEN, sizeof(rfid_event_t));

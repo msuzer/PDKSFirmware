@@ -2,15 +2,15 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include "drivers/spi/spi_bus.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Lifecycle */
-bool sd_service_init(spi_client_t *client, const int cs_pin);
+bool sd_service_init(const int spi_host, const int cs_pin);
 bool sd_service_is_mounted(void);
+bool sd_service_unmount(void);
 
 /* Directory / file helpers */
 bool sd_service_prepare_fs(void);   // creates folders, base files

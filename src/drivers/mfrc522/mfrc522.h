@@ -47,7 +47,7 @@
 /* ================= API ================= */
 
 /* ========= Lifecycle ========= */
-bool    mfrc522_init(spi_client_t *client, int cs_gpio);
+bool mfrc522_init(const int cs_mfrc522);
 
 /* ========= Card operations ========= */
 bool    mfrc522_is_card_present(void);

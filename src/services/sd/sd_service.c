@@ -46,6 +46,18 @@ bool sd_service_is_mounted(void) {
     return s_sd_mounted;
 }
 
+bool sd_service_unmount(void) {
+    if (!s_sd_mounted)
+        return true;
+
+    esp_vfs_fat_sdcard_unmount(SD_MOUNT_POINT, s_card);
+    s_card = NULL;
+    s_sd_mounted = false;
+
+    ESP_LOGI(TAG, "SD unmounted");
+    return true;
+}
+
 bool sd_service_file_exists(const char *path) {
     return path_exists(path);
 }
@@ -105,23 +117,14 @@ bool sd_service_write_file(const char *path,
 
     fflush(f);
     fclose(f);
+
     return true;
 }
 
-bool sd_service_init(spi_client_t *client, const int cs_pin) {
+bool sd_service_init(const int spi_host, const int cs_pin) {
     if (s_sd_mounted) {
         ESP_LOGI(TAG, "Already mounted");
         return true;
-    }
-
-    /* Register SD client on shared SPI bus for unified CS control.
-       Note: SD mounting uses SDSPI host; this client is not used by esp_vfs_fat.
-       Keep a conservative clock for safety. */
-    if (client) {
-        if (spi_bus_add_client(client, cs_pin, 10 * 1000 * 1000, 0, false) != ESP_OK) {
-            ESP_LOGW(TAG, "spi_bus_add_client failed for SD; continuing with SDSPI mount");
-            return false;
-        }
     }
 
     esp_vfs_fat_sdmmc_mount_config_t mount_cfg = {
@@ -131,7 +134,7 @@ bool sd_service_init(spi_client_t *client, const int cs_pin) {
     };
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    host.slot = SPI2_HOST;  // Use the same SPI host as the client
+    host.slot = spi_host;  // Use the same SPI host as the client
     // host.max_freq_khz = 400;   // Force init at <= 400 kHz (safe for all cards)
 
     sdspi_device_config_t slot_cfg = SDSPI_DEVICE_CONFIG_DEFAULT();

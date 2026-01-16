@@ -7,7 +7,7 @@
 #include <esp_log.h>
 #define TAG "MFRC522"
 
-static spi_client_t *_spi_client = NULL;
+static spi_client_t _spi_client;
 
 static uint8_t mfrc522_read_reg(uint8_t reg);
 static void mfrc522_write_reg(uint8_t reg, uint8_t val);
@@ -17,19 +17,15 @@ static uint8_t mfrc522_read_reg(uint8_t reg);
 static void mfrc522_write_reg(uint8_t reg, uint8_t val);
 static bool mfrc522_transceive(const uint8_t *tx, uint8_t tx_len, uint8_t *rx, uint8_t *rx_len);
 
-bool mfrc522_init(spi_client_t *client, int cs_gpio) {
-    if (!client)
-        return false;
+bool mfrc522_init(const int cs_mfrc522) {
+    ESP_LOGD(TAG, "Init MFRC522 (CS=%d)", cs_mfrc522);
 
-    ESP_LOGD(TAG, "Init MFRC522 (CS=%d)", cs_gpio);
-    if (spi_bus_add_client(client,
-                           cs_gpio,
+    if (spi_bus_add_client(&_spi_client,
+                           cs_mfrc522,
                            2 * 1000 * 1000,  // 2 MHz safe default
                            0,                // SPI mode 0
                            false) != ESP_OK)
         return false;
-
-    _spi_client = client;
 
         // Soft reset
     mfrc522_write_reg(MFRC522_REG_COMMAND, MFRC522_CMD_SOFT_RESET);
@@ -56,16 +52,10 @@ bool mfrc522_init(spi_client_t *client, int cs_gpio) {
 }
 
 uint8_t mfrc522_read_version(void) {
-    if (!_spi_client)
-        return 0x00;
-
     return mfrc522_read_reg(MFRC522_REG_VERSION);
 }
 
 bool mfrc522_is_card_present(void) {
-    if (!_spi_client)
-        return false;
-
     // Reset modes similar to Balboa's PICC_IsNewCardPresent
     mfrc522_write_reg(MFRC522_REG_TX_MODE, 0x00);
     mfrc522_write_reg(MFRC522_REG_RX_MODE, 0x00);
@@ -95,7 +85,7 @@ bool mfrc522_is_card_present(void) {
 }
 
 bool mfrc522_read_uid(uint8_t *uid, uint8_t *uid_len) {
-    if (!_spi_client || !uid || !uid_len)
+    if (!uid || !uid_len)
         return false;
 
     // Anticollision CL1: 0x93 0x20
@@ -155,9 +145,6 @@ bool mfrc522_read_uid(uint8_t *uid, uint8_t *uid_len) {
 }
 
 void mfrc522_halt(void) {
-    if (!_spi_client)
-        return;
-
     // Build HALT + CRC_A
     uint8_t cmd[4] = { PICC_CMD_HALT, 0x00, 0x00, 0x00 };
     uint8_t crc[2];
@@ -190,9 +177,6 @@ void mfrc522_halt(void) {
 }
 
 void mfrc522_stop_crypto(void) {
-    if (!_spi_client)
-        return;
-
     uint8_t val = mfrc522_read_reg(MFRC522_REG_STATUS2);
     val &= ~(1 << 3); // Clear MFCrypto1On bit
     mfrc522_write_reg(MFRC522_REG_STATUS2, val);
@@ -202,7 +186,7 @@ void mfrc522_stop_crypto(void) {
 // Internal helper functions
 // ----------------------------------------------------------------------
 static bool mfrc522_calc_crc(const uint8_t *data, uint8_t len, uint8_t out[2]) {
-    if (!_spi_client || !data || !out || len == 0)
+    if (!data || !out || len == 0)
         return false;
 
     mfrc522_write_reg(MFRC522_REG_COMMAND, MFRC522_CMD_IDLE);
@@ -231,19 +215,19 @@ static uint8_t mfrc522_read_reg(uint8_t reg) {
     uint8_t tx[2] = { (reg << 1) | 0x80, 0x00 };
     uint8_t rx[2] = {0};
 
-    spi_bus_transfer(_spi_client, tx, rx, 16);
+    spi_bus_transfer(&_spi_client, tx, rx, 16);
     return rx[1];
 }
 
 static void mfrc522_write_reg(uint8_t reg, uint8_t val) {
     uint8_t tx[2] = { (reg << 1) & 0x7E, val };
-    spi_bus_transfer(_spi_client, tx, NULL, 16);
+    spi_bus_transfer(&_spi_client, tx, NULL, 16);
 }
 
 static bool mfrc522_transceive(const uint8_t *tx, uint8_t tx_len,
                                uint8_t *rx, uint8_t *rx_len)
 {
-    if (!_spi_client || !tx || tx_len == 0)
+    if (!tx || tx_len == 0)
         return false;
 
     /* 1) Stop any active command */
