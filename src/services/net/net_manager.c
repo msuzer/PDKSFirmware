@@ -28,8 +28,7 @@ static net_if_t s_active_if = NET_IF_NONE;
 static bool s_inited = false;
 static bool s_started = false;
 
-static bool credentials_valid(const char *ssid)
-{
+static bool credentials_valid(const char *ssid) {
     return (ssid != NULL) && (ssid[0] != '\0');
 }
 
@@ -60,8 +59,6 @@ static void wifi_event_handler(void *arg,
         xEventGroupSetBits(s_net_event_group, NET_CONNECTED_BIT | NET_WIFI_ACTIVE_BIT);
         xEventGroupClearBits(s_net_event_group, NET_ETH_ACTIVE_BIT);
         s_active_if = NET_IF_WIFI;
-
-        ESP_LOGI(TAG, "WiFi got IP");
         return;
     }
 }
@@ -145,8 +142,9 @@ bool net_manager_start(void) {
     strncpy((char *)wcfg.sta.ssid, p->wifi_ssid, sizeof(wcfg.sta.ssid));
     strncpy((char *)wcfg.sta.password, p->wifi_pass, sizeof(wcfg.sta.password));
 
-    wcfg.sta.ssid[32] = '\0';
-    wcfg.sta.password[64] = '\0';
+    /* Ensure proper null-termination within bounds */
+    wcfg.sta.ssid[sizeof(wcfg.sta.ssid) - 1] = '\0';
+    wcfg.sta.password[sizeof(wcfg.sta.password) - 1] = '\0';
 
     if (!credentials_valid((const char *)wcfg.sta.ssid)) {
         ESP_LOGW(TAG, "WiFi SSID empty; not starting WiFi");

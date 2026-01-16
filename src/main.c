@@ -38,17 +38,6 @@ static void rtc_set_once_for_test(void) {
     datetime_set(&t);
 }
 
-static void show_date_time() {
-    char buf[32];
-
-    if (!datetime_format(buf, sizeof(buf))) {
-        ESP_LOGE(TAG, "Failed to format date/time");
-        return;
-    }
-
-    ESP_LOGI(TAG, "Current DateTime: %s", buf);
-}
-
 void spi_cs_init(void) {
     gpio_config_t io_conf = {
         .mode = GPIO_MODE_OUTPUT,

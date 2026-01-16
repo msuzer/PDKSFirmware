@@ -14,3 +14,4 @@ bool datetime_set(const struct tm *timeinfo);
 /* Convenience helpers */
 time_t datetime_now(void);
 bool datetime_format(char *buffer, size_t len);
+void show_date_time();

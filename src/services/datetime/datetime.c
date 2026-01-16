@@ -84,6 +84,17 @@ bool datetime_format(char *buffer, size_t len) {
     return true;
 }
 
+void show_date_time() {
+    char buf[32];
+
+    if (!datetime_format(buf, sizeof(buf))) {
+        ESP_LOGE(TAG, "Failed to format date/time");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Current DateTime: %s", buf);
+}
+
 /* Helper to set system time from RTC */
 
 static void set_system_time_from_rtc(const struct tm *tm) {
@@ -126,6 +137,7 @@ static void sntp_task(void *arg) {
         if (tm.tm_year >= (2026 - 1900)) {
             datetime_set(&tm);  // ✅ sets system time + RTC
             ESP_LOGI("DATETIME", "RTC updated from NTP (UTC)");
+            show_date_time();
             break;
         }
 
