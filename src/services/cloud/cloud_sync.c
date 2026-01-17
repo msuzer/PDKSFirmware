@@ -4,6 +4,7 @@
 #include "services/net/net_manager.h"
 #include "services/rfid/rfid_utils.h"
 #include "services/prefs/user_prefs.h"
+#include "services/datetime/datetime.h"
 
 #include "esp_log.h"
 #include <stdio.h>
