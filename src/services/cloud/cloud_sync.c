@@ -2,6 +2,8 @@
 #include "services/sd/access_log.h"
 #include "services/sd/sd_service.h"
 #include "services/net/net_manager.h"
+#include "services/rfid/rfid_utils.h"
+#include "services/prefs/user_prefs.h"
 
 #include "esp_log.h"
 #include <stdio.h>
@@ -36,12 +38,22 @@ static void save_sent_offset(uint32_t off) {
 }
 
 static bool upload_record(const access_log_record_t *rec) {
-    // TODO: replace with HTTP POST
+    char ts_buf[32];
+    datetime_format(rec->unix_time, ts_buf, sizeof(ts_buf));
+    const char *uid_str = rfid_uid_to_hex_str(rec->rfid_uid.uid, rec->rfid_uid.uid_len);
+
     ESP_LOGI(TAG,
-        "UPLOAD uid_len=%d result=%d time=%lu",
-        rec->rfid_uid.uid_len,
+        "UPLOAD uid=%s result=%d time=%s",
+        uid_str,
         rec->result,
-        (unsigned long)rec->unix_time
+        ts_buf
+    );
+
+    cloud_http_post_access(
+        uid_str,
+        rec->unix_time,
+        rec->result,
+        "device_001"
     );
 
     return true; // simulate success
@@ -106,6 +118,11 @@ bool cloud_sync_init(void) {
 void cloud_sync_kick(void) {
     if (s_sync_task) {
         ESP_LOGI(TAG, "Sync already running");
+        return;
+    }
+
+    if (prefs_get()->cloud_upload) {
+        ESP_LOGI(TAG, "Cloud upload disabled in prefs");
         return;
     }
 

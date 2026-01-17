@@ -6,10 +6,17 @@
 #define TAG "CLOUD_HTTP"
 
 /* Change to your test server */
-#define CLOUD_URL "http://10.0.0.100:8080/access"
+// TODO: make configurable via prefs
+#define CLOUD_URL "http://192.168.1.7:8080/access"
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt) {
-    // We don’t need to process response body for now
+    char resp[64];
+    int rlen = esp_http_client_read_response(evt->client, resp, sizeof(resp)-1);
+    if (rlen > 0) {
+        resp[rlen] = 0;
+        ESP_LOGI(TAG, "HTTP resp: %s", resp);
+    }
+
     return ESP_OK;
 }
 

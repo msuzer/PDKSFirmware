@@ -1,58 +1,45 @@
 # ESP32-S3 Access Control System
 
-This project is a custom embedded firmware for an ESP32-S3–based access control device.
+## Overview
+This project is an ESP32-S3–based access control system using RFID authentication, local SD-card logging, and cloud synchronization.
+It is designed to operate reliably offline, recover from power loss, and synchronize data when network connectivity is available.
 
-The system is designed for:
-- RFID card reading
-- Image capture
-- Local storage (SD card)
-- Cloud upload (Ethernet)
-- Door/relay control
-- User feedback via OLED, LED, and buzzer
-- Persistent user preferences
-- Real-time clock (RTC)
+The system is modular and extensible, with planned Ethernet (W5500) and camera support.
 
-The firmware is built using **ESP-IDF** and **FreeRTOS**, managed via **PlatformIO**.
+## Key Features
+- RFID-based access control (MFRC522)
+- Local, append-only SD-card logging (FAT32)
+- Cloud synchronization over Wi-Fi
+- RTC-backed timekeeping (DS3231 + SNTP)
+- Offline-first architecture
+- FreeRTOS-based, ESP-IDF (no Arduino)
 
----
+## Hardware
+- ESP32-S3 module (N16R8 – 16 MB Flash, 8 MB PSRAM)
+- MFRC522 RFID reader (SPI)
+- W5500 Ethernet controller (SPI, planned)
+- DS3231 RTC (I2C)
+- OLED display (I2C)
+- SD card (SPI mode)
+- Relay, LED, buzzer
+- UART logging only
 
-## Hardware Overview
+## Software Stack
+- ESP-IDF + PlatformIO
+- FreeRTOS
+- FATFS via esp_vfs_fat
+- esp_http_client for cloud communication
+- Custom preferences service (NVS)
 
-- MCU: ESP32-S3 (QFN56, embedded 8MB PSRAM)
-- Interfaces:
-  - SPI (RFID, Ethernet)
-  - I2C (OLED, RTC)
-  - Parallel Camera Interface
-- Peripherals:
-  - MFRC522 RFID reader
-  - W5500 Ethernet
-  - DS3231 RTC (battery-backed)
-  - OLED display (I2C)
-  - Relay for door/solenoid control
-  - User LED and buzzer
-  - SD card
+## Architecture Summary
+- Shared SPI bus with manual CS control
+- SD card is the source of truth
+- Append-only binary logs
+- Network layer decoupled from logging logic
+- Designed for Wi-Fi and Ethernet coexistence
 
----
-
-## Software Architecture
-
-The firmware is structured around **services** and **drivers**:
-
-### Core Services
-- Logger (UART)
-- LED service
-- Buzzer service
-- Relay (door control)
-- I2C bus manager
-- DateTime service (RTC abstraction)
-- User Preferences service (NVS-backed)
-- OLED UI service
-
-### Design Principles
-- ESP-IDF native (no Arduino framework)
-- FreeRTOS-based
-- Thread-safe services
-- Clear separation of concerns
-- Scalable and production-oriented
-
----
+## Intended Use
+- Door/access control
+- Audit logging
+- Offline-first IoT access systems
+- Future extensions: camera capture, Ethernet fallback, remote diagnostics
