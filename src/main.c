@@ -23,6 +23,8 @@
 #include "esp_event.h"
 #include "nvs_flash.h"
 
+#include "drivers/w5500/w5500_drv.h"
+
 #include "pins.h"
 
 #include <esp_log.h>
@@ -91,14 +93,16 @@ void app_main(void) {
     relay_init(USER_OPEN_DOOR_PIN);
     oled_init();
 
-    nvs_flash_init();
-    esp_netif_init();
-    esp_event_loop_create_default();
+    // System services
+    ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     net_manager_init();
-    net_manager_start();
+    net_manager_start(SHARED_SPI_HOST, W5500_CS_PIN);
     datetime_init();
 
+    // Storage & peripherals (safe after SPI proven)
     if (!sd_service_init(SHARED_SPI_HOST, SD_CS_PIN)) {
         ESP_LOGW(TAG, "SD not available, continuing without local logs");
     }

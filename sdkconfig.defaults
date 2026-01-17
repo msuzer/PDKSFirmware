@@ -78,6 +78,14 @@ CONFIG_BT_NIMBLE_ENABLED=n
 CONFIG_ESP_COEX_SW_COEXIST_ENABLE=n
 
 # ==============================
+# Ethernet
+# ==============================
+CONFIG_ETH_SPI_ETHERNET_W5500=y
+CONFIG_ETH_SPI_ETHERNET=y
+CONFIG_ETH_ENABLED=y
+CONFIG_ESP_EVENT_LOOP_PROFILING=n   # optional, but fine
+
+# ==============================
 # Camera support (future)
 # ==============================
 CONFIG_ESP32S3_DATA_CACHE_64KB=y
