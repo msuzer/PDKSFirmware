@@ -13,12 +13,13 @@
 
 #define DS3231_ADDR 0x68
 
-static bool sntp_started = false;
+static bool s_sntp_started = false;
+static bool s_sntp_synced = false;
 static SemaphoreHandle_t rtc_mutex;
 
+static void sntp_time_sync_cb(struct timeval *tv);
 static void set_system_time_from_rtc(const struct tm *tm);
-static void sntp_start(void);
-static void sntp_task(void *arg);
+
 
 bool datetime_init(void) {
     rtc_mutex = xSemaphoreCreateMutex();
@@ -35,9 +36,7 @@ bool datetime_init(void) {
         set_system_time_from_rtc(&rtc_time);
     }
 
-    // Start SNTP sync in background
-    xTaskCreate(sntp_task, "sntp_sync",
-                4096, NULL, 4, NULL);
+    esp_sntp_set_time_sync_notification_cb(sntp_time_sync_cb);
 
     return true;
 }
@@ -105,45 +104,42 @@ static void set_system_time_from_rtc(const struct tm *tm) {
     settimeofday(&tv, NULL);
 }
 
-static void sntp_start(void) {
-    if (sntp_started)
+void datetime_request_sntp_sync(void) {
+    if (s_sntp_started || s_sntp_synced) {
         return;
+    }
+
+    s_sntp_started = true;
+
+    ESP_LOGI(TAG, "Starting SNTP sync");
 
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
     esp_sntp_setservername(0, "pool.ntp.org");
     esp_sntp_setservername(1, "time.google.com");
     esp_sntp_init();
-
-    sntp_started = true;
 }
 
-static void sntp_task(void *arg) {
-    time_t now = 0;
-    struct tm tm = {0};
+static void sntp_time_sync_cb(struct timeval *tv) {
+    if (!tv) return;
 
-    if (!net_manager_wait_connected(15000)) {
-        ESP_LOGW("DATETIME", "Network not connected; skipping NTP sync");
-        vTaskDelete(NULL);
-        return;
-    }
+    time_t now = tv->tv_sec;
+    struct tm tm_utc = {0};
+    gmtime_r(&now, &tm_utc);
 
-    sntp_start();
+    ESP_LOGI(TAG, "SNTP time received");
 
-    for (int i = 0; i < 15; i++) {
-        time(&now);
-        gmtime_r(&now, &tm);   // ✅ use UTC internally
+    // 1) Update system time
+    struct timeval sys_tv = {.tv_sec = now, .tv_usec = 0};
+    settimeofday(&sys_tv, NULL);
 
-        if (tm.tm_year >= (2026 - 1900)) {
-            datetime_set(&tm);  // ✅ sets system time + RTC
-            ESP_LOGI("DATETIME", "RTC updated from NTP (UTC)");
-            show_date_time();
-            break;
-        }
+    // 2) Update RTC (this uses ds3231_set_time, which must be I2C-safe)
+    datetime_set(&tm_utc);
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
+    s_sntp_synced = true;
 
-    esp_sntp_stop();  // optional, but clean
+    // Optional: stop SNTP to reduce background activity
+    esp_sntp_stop();
 
-    vTaskDelete(NULL);
+    ESP_LOGI("DATETIME", "RTC updated from NTP (UTC)");
+    show_date_time();
 }

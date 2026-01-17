@@ -1,5 +1,6 @@
 #include "services/net/net_manager.h"
 #include "services/cloud/cloud_sync.h"
+#include "services/datetime/datetime.h"
 
 /* FreeRTOS */
 #include "freertos/FreeRTOS.h"
@@ -46,17 +47,27 @@ static void eth_event_handler(void *arg,
         case ETHERNET_EVENT_CONNECTED:
             ESP_LOGI(TAG, "Ethernet Link Up");
             break;
+
         case ETHERNET_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "Ethernet Link Down");
-            break;
-        default:
+            ESP_LOGW(TAG, "Ethernet Link Down");
+            xEventGroupClearBits(s_net_event_group, NET_CONNECTED_BIT | NET_ETH_ACTIVE_BIT);
+            s_active_if = NET_IF_NONE;
             break;
         }
-    } else if (event_base == IP_EVENT &&
-               event_id == IP_EVENT_ETH_GOT_IP) {
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        ESP_LOGI(TAG, "Ethernet Got IP: " IPSTR,
-                 IP2STR(&event->ip_info.ip));
+    }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_ETH_GOT_IP) {
+        ip_event_got_ip_t *event = event_data;
+
+        ESP_LOGI(TAG, "Ethernet Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+
+        xEventGroupSetBits(s_net_event_group, NET_CONNECTED_BIT | NET_ETH_ACTIVE_BIT);
+        xEventGroupClearBits(s_net_event_group, NET_WIFI_ACTIVE_BIT);
+
+        s_active_if = NET_IF_ETH;
+
+        datetime_request_sntp_sync();
+
+        cloud_sync_kick();
     }
 }
 
@@ -88,6 +99,8 @@ static void wifi_event_handler(void *arg,
         xEventGroupClearBits(s_net_event_group, NET_ETH_ACTIVE_BIT);
         s_active_if = NET_IF_WIFI;
 
+        datetime_request_sntp_sync();
+
         cloud_sync_kick();
 
         return;
@@ -112,8 +125,20 @@ static bool start_wifi(void) {
     const user_prefs_t *p = prefs_get();
     if (!p->wifi_enabled) return false;
 
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    if (!s_wifi_netif_created) {
+        s_wifi_netif = esp_netif_create_default_wifi_sta();
+        if (!s_wifi_netif) {
+            ESP_LOGE(TAG, "Failed to create WiFi netif");
+            return false;
+        }
+        s_wifi_netif_created = true;
+    }
+
+    if (!s_wifi_driver_inited) {
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+        s_wifi_driver_inited = true;
+    }
 
     /* handlers already registered */
 
@@ -122,6 +147,7 @@ static bool start_wifi(void) {
     strncpy((char *)wcfg.sta.password, p->wifi_pass, sizeof(wcfg.sta.password));
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wcfg));
     ESP_ERROR_CHECK(esp_wifi_start());
 
@@ -164,21 +190,6 @@ bool net_manager_init(void) {
         return false;
     }
 
-    if (!s_wifi_netif_created) {
-        s_wifi_netif = esp_netif_create_default_wifi_sta();
-        if (!s_wifi_netif) {
-            ESP_LOGE(TAG, "Failed to create WiFi netif");
-            return false;
-        }
-        s_wifi_netif_created = true;
-    }
-
-    if (!s_wifi_driver_inited) {
-        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-        s_wifi_driver_inited = true;
-    }
-
     /* Register handlers */
     // Eth events
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL));
@@ -187,10 +198,6 @@ bool net_manager_init(void) {
     // WiFi events
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
-
-    /* Mode + sane defaults */
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
 
     s_inited = true;
     return true;
@@ -202,11 +209,12 @@ bool net_manager_start(const int spi_host, const int cs_pin) {
 
     ESP_LOGI(TAG, "Network bring-up: try ETH first");
 
+    /*
     if (start_ethernet(spi_host, cs_pin)) {
         ESP_LOGI(TAG, "Using Ethernet");
         s_started = true;
         return true;
-    }
+    }*/
 
     ESP_LOGI(TAG, "Fallback to Wi-Fi");
 

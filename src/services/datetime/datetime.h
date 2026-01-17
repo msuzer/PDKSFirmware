@@ -11,6 +11,9 @@ bool datetime_get(struct tm *timeinfo);
 /* Set RTC time */
 bool datetime_set(const struct tm *timeinfo);
 
+/* Request SNTP time sync */
+void datetime_request_sntp_sync(void);
+
 /* Convenience helpers */
 time_t datetime_now(void);
 bool datetime_format(time_t ts, char *buffer, size_t len);

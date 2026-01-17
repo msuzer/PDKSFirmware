@@ -18,6 +18,29 @@ static esp_netif_t *s_eth_netif = NULL;
 #include "esp_eth.h"
 #include "esp_netif.h"
 
+#include "esp_mac.h"   // esp_read_mac
+
+static void set_eth_mac(esp_eth_handle_t eth) {
+    uint8_t mac[6];
+
+    // Use ESP32 base MAC for Ethernet (preferred if available in your IDF)
+    // If ESP_MAC_ETH not supported in your version, use ESP_MAC_WIFI_STA and tweak locally.
+    esp_read_mac(mac, ESP_MAC_ETH);
+
+    // Safety: if still all-zero, derive from Wi-Fi MAC and set locally administered bit
+    bool all_zero = true;
+    for (int i = 0; i < 6; i++) if (mac[i] != 0) { all_zero = false; break; }
+    if (all_zero) {
+        esp_read_mac(mac, ESP_MAC_WIFI_STA);
+        mac[0] |= 0x02;  // locally administered
+        mac[0] &= 0xFE;  // unicast
+    }
+
+    ESP_ERROR_CHECK(esp_eth_ioctl(eth, ETH_CMD_S_MAC_ADDR, mac));
+    ESP_LOGI("w5500", "ETH MAC set to %02X:%02X:%02X:%02X:%02X:%02X",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
 esp_err_t w5500_drv_init(const int spi_host, const int cs_pin) {
     esp_err_t ret;
 
@@ -73,14 +96,14 @@ esp_err_t w5500_drv_init(const int spi_host, const int cs_pin) {
     }
 
     /* 7. Attach netif */
-    ret = esp_netif_attach(
-        s_eth_netif,
-        esp_eth_new_netif_glue(s_eth_handle)
-    );
+    ret = esp_netif_attach(s_eth_netif, esp_eth_new_netif_glue(s_eth_handle));
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "esp_netif_attach failed");
         return ret;
     }
+
+    /* Set MAC address */
+    set_eth_mac(s_eth_handle);
 
     /* 8. Start Ethernet */
     ret = esp_eth_start(s_eth_handle);

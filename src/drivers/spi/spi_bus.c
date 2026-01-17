@@ -14,7 +14,7 @@ esp_err_t spi_bus_init(const int spi_device, const int miso_pin, const int mosi_
         .sclk_io_num = sck_pin,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = 256,
+        .max_transfer_sz = 2048,
     };
 
     _spi_device = spi_device;

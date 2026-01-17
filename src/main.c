@@ -93,14 +93,8 @@ void app_main(void) {
     relay_init(USER_OPEN_DOOR_PIN);
     oled_init();
 
-    // System services
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    net_manager_init();
-    net_manager_start(SHARED_SPI_HOST, W5500_CS_PIN);
     datetime_init();
+    show_date_time();
 
     // Storage & peripherals (safe after SPI proven)
     if (!sd_service_init(SHARED_SPI_HOST, SD_CS_PIN)) {
@@ -108,6 +102,14 @@ void app_main(void) {
     }
 
     rfid_service_start(MFRC522_CS_PIN);
+
+    // System services
+    ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    net_manager_init();
+    net_manager_start(SHARED_SPI_HOST, W5500_CS_PIN);
 
     // rtc_set_once_for_test();
     const user_prefs_t *p = prefs_get();
@@ -120,9 +122,7 @@ void app_main(void) {
 
     oled_show_message(p->device_name, "System Ready");
 
-    show_date_time();
-
-    access_log_iterate(dump_cb, NULL);
+    // access_log_iterate(dump_cb, NULL);
 
     xTaskCreate(access_control_task, "access_ctrl", 4096, NULL, 6, NULL);
 
