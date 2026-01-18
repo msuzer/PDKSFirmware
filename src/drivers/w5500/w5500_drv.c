@@ -54,12 +54,10 @@ esp_err_t w5500_drv_init(const int spi_host, const int cs_pin) {
 
     /* 2. SPI device config (CS handled by SPI driver) */
     spi_device_interface_config_t spi_dev_cfg = {
-        .command_bits = 16,
-        .address_bits = 8,
         .mode = 0,
-        .clock_speed_hz = 10 * 1000 * 1000,   // start conservative
+        .clock_speed_hz = 8 * 1000 * 1000,   // start conservative
         .spics_io_num = cs_pin,
-        .queue_size = 20,
+        .queue_size = 16,
     };
 
     /* 3. W5500 specific config */
@@ -67,7 +65,7 @@ esp_err_t w5500_drv_init(const int spi_host, const int cs_pin) {
         .spi_host_id = spi_host,
         .spi_devcfg = &spi_dev_cfg,
         .int_gpio_num = -1,        // no INT pin
-        .poll_period_ms = 100,     // 🔴 REQUIRED when INT is not used
+        .poll_period_ms = 250,     // 🔴 REQUIRED when INT is not used
     };
 
     /* 4. MAC + PHY config */
@@ -95,15 +93,15 @@ esp_err_t w5500_drv_init(const int spi_host, const int cs_pin) {
         return ret;
     }
 
+    /* Set MAC address */
+    set_eth_mac(s_eth_handle);
+
     /* 7. Attach netif */
     ret = esp_netif_attach(s_eth_netif, esp_eth_new_netif_glue(s_eth_handle));
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "esp_netif_attach failed");
         return ret;
     }
-
-    /* Set MAC address */
-    set_eth_mac(s_eth_handle);
 
     /* 8. Start Ethernet */
     ret = esp_eth_start(s_eth_handle);

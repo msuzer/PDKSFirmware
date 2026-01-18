@@ -104,8 +104,8 @@ void app_main(void) {
     rfid_service_start(MFRC522_CS_PIN);
 
     // System services
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
+    // ESP_ERROR_CHECK(nvs_flash_init()); // already called in prefs_init()
+    ESP_ERROR_CHECK(esp_netif_init()); // api note: This function should be called exactly once from application code, when the application starts up.
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     net_manager_init(SHARED_SPI_HOST, W5500_CS_PIN);

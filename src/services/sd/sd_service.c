@@ -140,8 +140,6 @@ bool sd_service_init(const int spi_host, const int cs_pin) {
     slot_cfg.gpio_cs = cs_pin;
     slot_cfg.host_id = host.slot;
 
-    ESP_LOGI(TAG, "Mounting SD (SPI host=%d, CS=GPIO%d) at %s", host.slot, cs_pin, SD_MOUNT_POINT);
-
     esp_err_t err = esp_vfs_fat_sdspi_mount(SD_MOUNT_POINT, &host, &slot_cfg, &mount_cfg, &s_card);
 
     if (err != ESP_OK) {
@@ -152,6 +150,7 @@ bool sd_service_init(const int spi_host, const int cs_pin) {
     }
 
     s_sd_mounted = true;
+    ESP_LOGI(TAG, "SD Mounted at %s", SD_MOUNT_POINT);
 
     /* Optional: print card info */
     sdmmc_card_print_info(stdout, s_card);
@@ -162,6 +161,5 @@ bool sd_service_init(const int spi_host, const int cs_pin) {
         /* Keep mounted; user can retry */
     }
 
-    ESP_LOGI(TAG, "SD mounted OK");
     return true;
 }
