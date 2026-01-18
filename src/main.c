@@ -23,6 +23,8 @@
 #include "esp_event.h"
 #include "nvs_flash.h"
 
+#include "drivers/camera/camera_drv.h"
+
 #include "drivers/w5500/w5500_drv.h"
 
 #include "pins.h"
@@ -31,6 +33,47 @@
 #define TAG "MAIN"
 
 #define SHARED_SPI_HOST SPI2_HOST
+
+void camera_test(void) {
+    ESP_LOGI(TAG, "Camera bring-up test");
+
+    esp_err_t err = camera_drv_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Camera init failed");
+        return;
+    }
+
+    camera_frame_t frame;
+    err = camera_drv_get_frame(&frame);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Frame capture failed");
+        camera_drv_deinit();
+        return;
+    }
+
+    ESP_LOGI(TAG,
+        "Frame OK: %ux%u format=%d len=%u",
+        frame.width,
+        frame.height,
+        frame.format,
+        (unsigned)frame.len
+    );
+
+    if (frame.format == PIXFORMAT_JPEG && frame.len >= 4) {
+        ESP_LOGI(TAG,
+            "JPEG header: %02X %02X %02X %02X",
+            frame.data[0],
+            frame.data[1],
+            frame.data[2],
+            frame.data[3]
+        );
+    }
+
+    camera_drv_return_frame(&frame);
+    camera_drv_deinit();
+
+    ESP_LOGI(TAG, "Camera bring-up test done");
+}
 
 static bool dump_cb(const access_log_record_t *rec, void *ctx) {
     static int record_count = 0;
@@ -124,6 +167,8 @@ void app_main(void) {
     // access_log_iterate(dump_cb, NULL);
 
     xTaskCreate(access_control_task, "access_ctrl", 4096, NULL, 6, NULL);
+
+    // camera_test();
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(1000));

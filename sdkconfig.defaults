@@ -33,13 +33,6 @@ CONFIG_ESP_CONSOLE_UART=y
 CONFIG_ESP_CONSOLE_UART_NUM=0
 
 # ==============================
-# PSRAM (ESP32-S3 embedded)
-# ==============================
-CONFIG_SPIRAM=y
-CONFIG_SPIRAM_MODE_OCT=y
-CONFIG_SPIRAM_SPEED_80M=y
-
-# ==============================
 # FLASH
 # ==============================
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
@@ -88,7 +81,25 @@ CONFIG_ETH_ENABLED=y
 CONFIG_ESP_EVENT_LOOP_PROFILING=n   # optional, but fine
 
 # ==============================
-# Camera support (future)
+# PSRAM (ESP32-S3 embedded)
 # ==============================
-CONFIG_ESP32S3_DATA_CACHE_64KB=y
-CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_BOOT_INIT=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+
+# ==============================
+# Camera support
+# ==============================
+CONFIG_ESP32_CAMERA=y
+CONFIG_CAMERA_OV2640=y
+CONFIG_CAMERA_JPEG=y
+
+# ESP32-S3 camera backend
+CONFIG_ESP32_S3_LCD_CAM=y
+CONFIG_ESP32_S3_GDMA=y
+
+# Camera buffers
+CONFIG_CAMERA_DMA_BUFFER_SIZE_MAX=32768
