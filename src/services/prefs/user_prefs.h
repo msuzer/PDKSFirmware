@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define USER_PREFS_VERSION 2
+#define USER_PREFS_VERSION 3
 
 typedef struct {
     uint8_t version;
@@ -20,6 +20,8 @@ typedef struct {
     bool capture_image;
     bool cloud_upload;
 
+    /* Network */
+    bool eth_enabled;
     bool wifi_enabled;
     char wifi_ssid[32];
     char wifi_pass[64];

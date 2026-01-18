@@ -108,8 +108,7 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    net_manager_init();
-    net_manager_start(SHARED_SPI_HOST, W5500_CS_PIN);
+    net_manager_init(SHARED_SPI_HOST, W5500_CS_PIN);
 
     // rtc_set_once_for_test();
     const user_prefs_t *p = prefs_get();

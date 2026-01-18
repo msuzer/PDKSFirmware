@@ -9,6 +9,7 @@
 #include "esp_sntp.h"
 
 #include <esp_log.h>
+#include <time.h>
 #define TAG "DateTime"
 
 #define DS3231_ADDR 0x68
@@ -28,13 +29,15 @@ bool datetime_init(void) {
     if (!ds3231_init())
         return false;
 
-    setenv("TZ", "UTC0", 1);
-    tzset();
-
     struct tm rtc_time;
     if (ds3231_get_time(&rtc_time)) {
         set_system_time_from_rtc(&rtc_time);
     }
+
+    // Set local timezone to UTC+3 for display purposes
+    // Note: POSIX TZ uses reversed sign; "UTC-3" means UTC+3
+    setenv("TZ", "UTC-3", 1);
+    tzset();
 
     esp_sntp_set_time_sync_notification_cb(sntp_time_sync_cb);
 
@@ -64,9 +67,8 @@ bool datetime_set(const struct tm *timeinfo) {
 }
 
 time_t datetime_now(void) {
-    struct tm t;
-    if (!datetime_get(&t)) return 0;
-    return mktime(&t);
+    // Use system time (kept in sync from RTC/NTP)
+    return time(NULL);
 }
 
 bool datetime_format(time_t ts, char *buffer, size_t len) {
@@ -77,7 +79,8 @@ bool datetime_format(time_t ts, char *buffer, size_t len) {
     }
 
     struct tm t;
-    gmtime_r(&ts, &t); // format as UTC
+    // Format as local time (UTC+3 per TZ above)
+    localtime_r(&ts, &t);
     strftime(buffer, len, "%d.%m.%Y %H:%M:%S", &t);
     return true;
 }

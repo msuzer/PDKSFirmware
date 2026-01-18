@@ -122,7 +122,7 @@ void cloud_sync_kick(void) {
         return;
     }
 
-    if (prefs_get()->cloud_upload) {
+    if (!prefs_get()->cloud_upload) {
         ESP_LOGI(TAG, "Cloud upload disabled in prefs");
         return;
     }

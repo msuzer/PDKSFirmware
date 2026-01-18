@@ -13,8 +13,7 @@ typedef enum {
 } net_if_t;
 
 /* Core lifecycle */
-bool net_manager_init(void);
-bool net_manager_start(const int spi_host, const int cs_pin);
+bool net_manager_init(const int spi_host, const int cs_pin);
 
 /* Status */
 bool net_manager_is_connected(void);

@@ -24,9 +24,10 @@ static void prefs_set_defaults(void) {
     prefs.led_enabled = true;
     prefs.oled_brightness = 128;
 
-    prefs.capture_image = true;
-    prefs.cloud_upload = true;
+    prefs.capture_image = false;
+    prefs.cloud_upload = false;
 
+    prefs.eth_enabled = false;
     prefs.wifi_enabled = true;
     strcpy(prefs.wifi_ssid, "SUPERONLINE_Wi-Fi_3CF7");
     strcpy(prefs.wifi_pass, "cdN2PKfKtDuz");
@@ -54,7 +55,7 @@ bool prefs_init(void) {
         prefs_set_defaults();
         prefs_save();
     } else {
-        ESP_LOGI(TAG, "Prefs loaded from NVS");
+        ESP_LOGI(TAG, "Prefs loaded from NVS. version=%u", (unsigned)prefs.version);
     }
 
     return true;

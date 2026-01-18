@@ -28,13 +28,8 @@
 
 static const char *TAG = "net";
 
-static bool s_wifi_netif_created = false;
-static esp_netif_t *s_wifi_netif = NULL;
-static bool s_wifi_driver_inited = false;
-
 static EventGroupHandle_t s_net_event_group;
 static net_if_t s_active_if = NET_IF_NONE;
-static bool s_inited = false;
 static bool s_started = false;
 
 static void eth_event_handler(void *arg,
@@ -108,6 +103,16 @@ static void wifi_event_handler(void *arg,
 }
 
 static bool start_ethernet(const int spi_host, const int cs_pin) {
+    const user_prefs_t *p = prefs_get();
+    if (!p->eth_enabled) {
+        ESP_LOGW(TAG, "Ethernet disabled in prefs");
+        return false;
+    }
+
+    // Eth events
+    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_event_handler, NULL));
+
     if (w5500_drv_init(spi_host, cs_pin) != ESP_OK) {
         ESP_LOGW(TAG, "ETH init failed");
         return false;
@@ -123,22 +128,23 @@ static bool start_ethernet(const int spi_host, const int cs_pin) {
 
 static bool start_wifi(void) {
     const user_prefs_t *p = prefs_get();
-    if (!p->wifi_enabled) return false;
-
-    if (!s_wifi_netif_created) {
-        s_wifi_netif = esp_netif_create_default_wifi_sta();
-        if (!s_wifi_netif) {
-            ESP_LOGE(TAG, "Failed to create WiFi netif");
-            return false;
-        }
-        s_wifi_netif_created = true;
+    if (!p->wifi_enabled) {
+        ESP_LOGW(TAG, "WiFi disabled in prefs");
+        return false;
     }
 
-    if (!s_wifi_driver_inited) {
-        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-        s_wifi_driver_inited = true;
+    // WiFi events
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
+
+    esp_netif_t *wifi_netif = esp_netif_create_default_wifi_sta();
+    if (!wifi_netif) {
+        ESP_LOGE(TAG, "Failed to create WiFi netif");
+        return false;
     }
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
     /* handlers already registered */
 
@@ -154,70 +160,29 @@ static bool start_wifi(void) {
     return net_manager_wait_connected(10000);
 }
 
-bool net_manager_init(void) {
-    if (s_inited) return true;
-
+bool net_manager_init(const int spi_host, const int cs_pin) {
     s_net_event_group = xEventGroupCreate();
     if (!s_net_event_group) {
         ESP_LOGE(TAG, "Failed to create event group");
         return false;
     }
 
-    /* Note: main.c should call these once globally.
-     * We keep init here defensive in case caller forgets.
-     */
-    esp_err_t err;
+    // System services, main.c should have called these once globally.
+    // ESP_ERROR_CHECK(nvs_flash_init());
+    // ESP_ERROR_CHECK(esp_netif_init());
+    // ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        nvs_flash_erase();
-        err = nvs_flash_init();
-    }
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "nvs_flash_init failed: %s", esp_err_to_name(err));
-        return false;
-    }
-
-    err = esp_netif_init();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_netif_init failed: %s", esp_err_to_name(err));
-        return false;
-    }
-
-    err = esp_event_loop_create_default();
-    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-        ESP_LOGE(TAG, "event_loop_create_default failed: %s", esp_err_to_name(err));
-        return false;
-    }
-
-    /* Register handlers */
-    // Eth events
-    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_event_handler, NULL));
-
-    // WiFi events
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
-
-    s_inited = true;
-    return true;
-}
-
-bool net_manager_start(const int spi_host, const int cs_pin) {
-    if (!s_inited && !net_manager_init()) return false;
     if (s_started) return true;
 
-    ESP_LOGI(TAG, "Network bring-up: try ETH first");
+    ESP_LOGI(TAG, "Network bring-up, try ETH first");
 
-    /*
     if (start_ethernet(spi_host, cs_pin)) {
         ESP_LOGI(TAG, "Using Ethernet");
         s_started = true;
         return true;
-    }*/
+    }
 
-    ESP_LOGI(TAG, "Fallback to Wi-Fi");
-
+    ESP_LOGI(TAG, "fallback Wi-Fi");
     if (start_wifi()) {
         ESP_LOGI(TAG, "Using Wi-Fi");
         s_started = true;
