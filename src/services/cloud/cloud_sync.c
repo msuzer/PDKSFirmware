@@ -52,32 +52,32 @@ static bool upload_record(const access_log_record_t *rec) {
         ts_buf
     );
 
-    cloud_http_post_access(
+    return cloud_http_post_access(
         uid_str,
         result_str,
         ts_buf,
         "device_001"
     );
-
-    return true; // simulate success
 }
 
-static void cloud_sync_task(void *arg) {
-    ESP_LOGI(TAG, "Sync task started");
+bool cloud_sync_send_record(const access_log_record_t *rec) {
+    if (!rec) return false;
 
-    if (!sd_service_is_mounted()) {
-        ESP_LOGW(TAG, "SD not mounted");
-        s_sync_task = NULL;
-        vTaskDelete(NULL);
-        return;
+    if (!prefs_get()->cloud_upload) {
+        ESP_LOGI(TAG, "Cloud upload disabled in prefs");
+        return false;
     }
 
     if (!net_manager_is_connected()) {
         ESP_LOGW(TAG, "Network not connected");
-        s_sync_task = NULL;
-        vTaskDelete(NULL);
-        return;
+        return false;
     }
+
+    return upload_record(rec);
+}
+
+static void cloud_sync_task(void *arg) {
+    ESP_LOGI(TAG, "Sync task started");
 
     uint32_t sent_off = load_sent_offset();
 
@@ -118,10 +118,6 @@ static void cloud_sync_task(void *arg) {
     vTaskDelete(NULL);
 }
 
-bool cloud_sync_init(void) {
-    return true;
-}
-
 void cloud_sync_kick(void) {
     if (s_sync_task) {
         ESP_LOGI(TAG, "Sync already running");
@@ -130,6 +126,16 @@ void cloud_sync_kick(void) {
 
     if (!prefs_get()->cloud_upload) {
         ESP_LOGI(TAG, "Cloud upload disabled in prefs");
+        return;
+    }
+
+    if (!net_manager_is_connected()) {
+        ESP_LOGW(TAG, "Network not connected");
+        return;
+    }
+
+    if (!sd_service_is_mounted()) {
+        ESP_LOGW(TAG, "SD not mounted");
         return;
     }
 

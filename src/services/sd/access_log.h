@@ -34,5 +34,6 @@ typedef bool (*access_log_iter_cb_t)(
 /* Iterate over all valid log records */
 bool access_log_iterate(access_log_iter_cb_t cb, void *user_ctx);
 
-/* Append a new RFID access log record */
-bool access_log_append_rfid(const rfid_event_t *evt, bool granted, bool sent);
+/* Append a new RFID access log record. If out_rec is non-NULL, the
+    constructed record is copied out regardless of write success. */
+bool access_log_append_rfid(const rfid_event_t *evt, bool granted, bool sent, access_log_record_t *out_rec);

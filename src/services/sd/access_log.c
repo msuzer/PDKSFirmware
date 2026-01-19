@@ -6,37 +6,39 @@
 
 #define ACCESS_LOG_FILE "/sd/logs/access.bin"
 
-bool access_log_append_rfid(const rfid_event_t *evt, bool granted, bool sent) {
+bool access_log_append_rfid(const rfid_event_t *evt, bool granted, bool sent, access_log_record_t *out_rec) {
     if (!evt) return false;
-
-    if (!sd_service_is_mounted()) {
-        // Avoid heavy work if SD isn't available
-        return false;
-    }
 
     // Clamp UID length to prevent overflow
     uint8_t uid_len = evt->uid_len;
     if (uid_len > RFID_UID_MAX_LEN) uid_len = RFID_UID_MAX_LEN;
 
-    access_log_record_t rec;
-    memset(&rec, 0, sizeof(rec));
+    // Build directly into caller-provided buffer when available to avoid memcpy
+    access_log_record_t local_rec;
+    access_log_record_t *recp = out_rec ? out_rec : &local_rec;
+    memset(recp, 0, sizeof(*recp));
 
-    rec.magic     = ACCESS_LOG_MAGIC;
-    rec.version   = ACCESS_LOG_VER;
-    rec.size      = sizeof(access_log_record_t);
-    rec.unix_time = (uint32_t)datetime_now();
+    recp->magic     = ACCESS_LOG_MAGIC;
+    recp->version   = ACCESS_LOG_VER;
+    recp->size      = sizeof(access_log_record_t);
+    recp->unix_time = (uint32_t)datetime_now();
 
-    rec.rfid_uid.uid_len = uid_len;
-    memcpy(rec.rfid_uid.uid, evt->uid, uid_len);
+    recp->rfid_uid.uid_len = uid_len;
+    memcpy(recp->rfid_uid.uid, evt->uid, uid_len);
 
-    rec.result      = granted ? ACCESS_GRANTED : ACCESS_DENIED;
-    rec.via_network = sent ? 1 : 0;
-    rec.reserved    = 0;
+    recp->result      = granted ? ACCESS_GRANTED : ACCESS_DENIED;
+    recp->via_network = sent ? 1 : 0;
+    recp->reserved    = 0;
+
+    if (!sd_service_is_mounted()) {
+        // SD not available; we still produced the record for the caller
+        return false;
+    }
 
     return sd_service_write_file(
-        "/sd/logs/access.bin",
-        &rec,
-        sizeof(rec),
+        ACCESS_LOG_FILE,
+        recp,
+        sizeof(*recp),
         true
     );
 }

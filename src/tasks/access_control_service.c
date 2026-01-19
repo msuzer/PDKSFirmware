@@ -31,8 +31,9 @@ void access_control_task(void *arg) {
                 buzzer_beep(500);
             }
 
-            access_log_append_rfid(&evt, authorized, false); // cloud not sent yet
-            cloud_sync_kick();
+            access_log_record_t copy_rec; // make a copy for cloud upload
+            access_log_append_rfid(&evt, authorized, false, &copy_rec); // cloud not sent yet
+            cloud_sync_send_record(&copy_rec); // Send only the current record to cloud
         }
     }
 }
