@@ -18,6 +18,7 @@ Core bring-up is complete and validated.
 - Append-only binary access logging
 - Log reader with integrity scan
 - Cloud sync over Wi-Fi verified end-to-end
+- Eth support implemented. W5500 driver works!
 
 ## Verified Data Flow
 RFID → Access decision → SD log → Wi-Fi → HTTP server → ACK → offset update
@@ -41,17 +42,12 @@ RFID → Access decision → SD log → Wi-Fi → HTTP server → ACK → offset
 - Prevent rapid retry loops
 - Gate uploads via user preference
 
-### 2. Ethernet Support (W5500)
-- Use ESP-IDF native esp_eth
-- Reuse existing cloud sync logic
-- Implement Wi-Fi ↔ Ethernet failover
-
-### 3. Log Export & Maintenance
+### 2. Log Export & Maintenance
 - CSV export utility
 - Optional HTTP diagnostics endpoint
 - Optional log pruning/compaction
 
-### 4. Camera Integration (Later Phase)
+### 3. Camera Integration (Later Phase)
 - Capture image on granted access
 - Store images on SD card
 - Link images to log records

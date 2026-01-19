@@ -10,13 +10,33 @@
 #define CLOUD_URL "http://192.168.1.7:8080/access"
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt) {
-    char resp[64];
-    int rlen = esp_http_client_read_response(evt->client, resp, sizeof(resp)-1);
-    if (rlen > 0) {
-        resp[rlen] = 0;
-        ESP_LOGI(TAG, "HTTP resp: %s", resp);
+    // Keep the handler lightweight; don't read response here.
+    // Response will be read after esp_http_client_perform() returns.
+    switch (evt->event_id) {
+        case HTTP_EVENT_ERROR:
+            ESP_LOGW(TAG, "HTTP event: error");
+            break;
+        case HTTP_EVENT_ON_CONNECTED:
+            ESP_LOGD(TAG, "HTTP event: connected");
+            break;
+        case HTTP_EVENT_HEADERS_SENT:
+            ESP_LOGD(TAG, "HTTP event: headers sent");
+            break;
+        case HTTP_EVENT_ON_HEADER:
+            ESP_LOGD(TAG, "HTTP header: %s: %s", evt->header_key, evt->header_value);
+            break;
+        case HTTP_EVENT_ON_DATA:
+            // Data observed; handled after perform for simplicity.
+            break;
+        case HTTP_EVENT_ON_FINISH:
+            ESP_LOGD(TAG, "HTTP event: finish");
+            break;
+        case HTTP_EVENT_DISCONNECTED:
+            ESP_LOGD(TAG, "HTTP event: disconnected");
+            break;
+        default:
+            break;
     }
-
     return ESP_OK;
 }
 
@@ -70,6 +90,14 @@ bool cloud_http_post_access(const char *uid_hex,
 
     int status = esp_http_client_get_status_code(client);
     ESP_LOGI(TAG, "HTTP status = %d", status);
+
+    // Optionally read a small response body safely outside the event handler.
+    char resp[128];
+    int rlen = esp_http_client_read_response(client, resp, sizeof(resp) - 1);
+    if (rlen > 0) {
+        resp[rlen] = '\0';
+        ESP_LOGI(TAG, "HTTP resp: %s", resp);
+    }
 
     esp_http_client_cleanup(client);
 

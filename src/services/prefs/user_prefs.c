@@ -25,9 +25,9 @@ static void prefs_set_defaults(void) {
     prefs.oled_brightness = 128;
 
     prefs.capture_image = true;
-    prefs.cloud_upload = false;
+    prefs.cloud_upload = true;
 
-    prefs.eth_enabled = true;
+    prefs.eth_enabled = false;
     prefs.wifi_enabled = true;
     strcpy(prefs.wifi_ssid, "SUPERONLINE_Wi-Fi_3CF7");
     strcpy(prefs.wifi_pass, "cdN2PKfKtDuz");

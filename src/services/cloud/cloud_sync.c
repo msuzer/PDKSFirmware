@@ -65,12 +65,14 @@ static void cloud_sync_task(void *arg) {
 
     if (!sd_service_is_mounted()) {
         ESP_LOGW(TAG, "SD not mounted");
+        s_sync_task = NULL;
         vTaskDelete(NULL);
         return;
     }
 
     if (!net_manager_is_connected()) {
         ESP_LOGW(TAG, "Network not connected");
+        s_sync_task = NULL;
         vTaskDelete(NULL);
         return;
     }
@@ -80,6 +82,7 @@ static void cloud_sync_task(void *arg) {
     FILE *f = fopen(ACCESS_LOG_FILE, "rb");
     if (!f) {
         ESP_LOGW(TAG, "No access log");
+        s_sync_task = NULL;
         vTaskDelete(NULL);
         return;
     }
@@ -109,6 +112,7 @@ static void cloud_sync_task(void *arg) {
 
     fclose(f);
     ESP_LOGI(TAG, "Sync done, offset=%lu", (unsigned long)cur_off);
+    s_sync_task = NULL;
     vTaskDelete(NULL);
 }
 

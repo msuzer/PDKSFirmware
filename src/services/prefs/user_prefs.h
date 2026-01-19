@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define USER_PREFS_VERSION 1
+#define USER_PREFS_VERSION 0
 
 typedef struct {
     uint8_t version;

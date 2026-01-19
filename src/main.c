@@ -75,7 +75,7 @@ void camera_test(void) {
     ESP_LOGI(TAG, "Camera bring-up test done");
 }
 
-static bool dump_cb(const access_log_record_t *rec, void *ctx) {
+bool dump_cb(const access_log_record_t *rec, void *ctx) {
     static int record_count = 0;
 
     record_count++;
