@@ -43,17 +43,19 @@ static bool upload_record(const access_log_record_t *rec) {
     datetime_format(rec->unix_time, ts_buf, sizeof(ts_buf));
     const char *uid_str = rfid_uid_to_hex_str(rec->rfid_uid.uid, rec->rfid_uid.uid_len);
 
+    const char *result_str = rec->result ? "granted" : "denied";
+
     ESP_LOGI(TAG,
-        "UPLOAD uid=%s result=%d time=%s",
+        "UPLOAD uid=%s result=%s time=%s",
         uid_str,
-        rec->result,
+        result_str,
         ts_buf
     );
 
     cloud_http_post_access(
         uid_str,
-        rec->unix_time,
-        rec->result,
+        result_str,
+        ts_buf,
         "device_001"
     );
 

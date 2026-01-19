@@ -41,8 +41,8 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt) {
 }
 
 bool cloud_http_post_access(const char *uid_hex,
-                            uint32_t unix_time,
-                            int result,
+                            const char* result,
+                            const char* timestamp,
                             const char *device)
 {
     char body[256];
@@ -50,13 +50,13 @@ bool cloud_http_post_access(const char *uid_hex,
     int len = snprintf(body, sizeof(body),
         "{"
         "\"uid\":\"%s\","
-        "\"timestamp\":%lu,"
-        "\"result\":%d,"
+        "\"result\":\"%s\","
+        "\"timestamp\":\"%s\","
         "\"device\":\"%s\""
         "}",
         uid_hex,
-        (unsigned long)unix_time,
         result,
+        timestamp,
         device
     );
 
